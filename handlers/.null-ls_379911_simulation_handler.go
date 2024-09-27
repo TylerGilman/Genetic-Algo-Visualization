@@ -14,7 +14,7 @@ func HandleSimulation(w http.ResponseWriter, r *http.Request) error {
 	initialParams := simulation.SimulationParameters{
 		PopulationSize:   10,
 		MutationRate:     0.01,
-		CrossoverRate:    0.7,
+    CrossoverRate:    0.7,
 		FoodAvailability: 0.5,
 		PredatorDensity:  0.2,
 		WaterTemperature: 3,

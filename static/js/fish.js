@@ -89,13 +89,37 @@ class Fish {
     getSizeFromGenome() {
         return this.genome.size * 0.5 + 0.5; // Size between 0.5 and 1
     }
-
     calculateMetabolism(waterTemperature) {
-        // Base metabolism inversely proportional to size
-        const baseMetabolism = 1 / this.size;
-        // Temperature multiplier
-        const tempMultiplier = 1 + (waterTemperature - 20) / 20;
-        return baseMetabolism * tempMultiplier;
+        // Ensure temperature is within the -2°C to 30°C range
+        const temp = Math.max(-2, Math.min(30, waterTemperature));
+
+        // Base metabolic rate (BMR) calculation
+        // We'll use a simplified allometric equation: BMR = a * M^b
+        // where M is mass (we'll use size as a proxy), and a and b are constants
+        const a = 0.14; // Coefficient (adjust as needed)
+        const b = -0.25; // Exponent (typically between -0.2 and -0.3 for fish)
+        const basalMetabolicRate = a * Math.pow(this.size, b);
+
+        // Temperature effect using a modified Q10 principle
+        // We'll use a more complex curve that peaks around 20°C and drops off at higher temps
+        const Q10 = 2.5; // Typical Q10 value for biological systems
+        const optimalTemp = 20; // Temperature of peak metabolism
+        const tempEffect = Math.pow(Q10, (temp - optimalTemp) / 10) * 
+                           (1 - 0.05 * Math.abs(temp - optimalTemp));
+
+        // Combine basal metabolic rate and temperature effect
+        let metabolism = basalMetabolicRate * tempEffect;
+
+        // Adjust for extreme temperatures
+        if (temp < 0) {
+            metabolism *= 0.2 + 0.8 * (temp + 2) / 2; // Gradual reduction from 0°C to -2°C
+        } else if (temp > 25) {
+            metabolism *= 0.5 + 0.5 * (30 - temp) / 5; // Gradual reduction from 25°C to 30°C
+        }
+
+        // Ensure a minimum metabolism (e.g., 10% of basal rate)
+        const minMetabolism = basalMetabolicRate * 0.1;
+        return Math.max(metabolism, minMetabolism);
     }
 
     update(canvas, foodItems, waterTemperature) {

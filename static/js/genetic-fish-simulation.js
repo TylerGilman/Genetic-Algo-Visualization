@@ -1,38 +1,37 @@
 class GeneticFishSimulation {
     constructor(canvasId, params) {
-        console.log("Initializing GeneticFishSimulation", canvasId, params);
         this.canvas = document.getElementById(canvasId);
-        if (!this.canvas) {
-            console.error("Canvas element not found:", canvasId);
-            return;
-        }
         this.ctx = this.canvas.getContext('2d');
         this.params = params;
         this.fishes = [];
         this.foodItems = [];
         this.isRunning = false;
         this.speedMultiplier = 1;
+        this.simulationTime = 0;
+        this.lastAnimationTime = 0;
         this.lastFoodTime = 0;
+        this.timeData = [];
+        this.fishData = [];
 
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
-        console.log("GeneticFishSimulation initialized");
+        
+        this.initializeFishes();
     }
 
     resizeCanvas() {
-        console.log("Resizing canvas");
         const container = this.canvas.parentElement;
         this.canvas.width = container.clientWidth;
-        this.canvas.height = container.clientHeight;
-        console.log("Canvas resized to", this.canvas.width, "x", this.canvas.height);
-
+        this.canvas.height = window.innerHeight / 2;
+        console.log(`Canvas resized to ${this.canvas.width}x${this.canvas.height}`);
+        
+        // Reinitialize fishes if the simulation is already running
         if (this.isRunning) {
             this.initializeFishes();
         }
     }
 
     initializeFishes() {
-        console.log("Initializing fishes");
         this.fishes = [];
         for (let i = 0; i < this.params.populationSize; i++) {
             const genome = {
@@ -47,32 +46,49 @@ class GeneticFishSimulation {
                 this.params.waterTemperature
             ));
         }
-        console.log("Fishes initialized:", this.fishes.length);
     }
 
     start() {
-        console.log("Starting simulation");
         this.isRunning = true;
+        this.lastAnimationTime = performance.now();
+        this.animate(this.lastAnimationTime);
+    }
+
+    reset(params) {
+        this.params = params;
+        this.fishes = [];
+        this.foodItems = [];
+        this.simulationTime = 0;
+        this.lastAnimationTime = 0;
+        this.lastFoodTime = 0;
+        this.timeData = [];
+        this.fishData = [];
         this.initializeFishes();
-        this.animate();
-        console.log("Simulation started");
     }
 
     animate(currentTime) {
-        if (!this.isRunning) {
-            console.log("Simulation stopped");
-            return;
+        if (!this.isRunning) return;
+
+        if (this.lastAnimationTime === 0) {
+            this.lastAnimationTime = currentTime;
         }
+
+        const deltaTime = (currentTime - this.lastAnimationTime) / 1000; // Convert to seconds
+        this.simulationTime += deltaTime * this.speedMultiplier;
+        this.lastAnimationTime = currentTime;
 
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+        // Generate food
         if (currentTime - this.lastFoodTime > 1000 / (this.params.foodAvailability * this.speedMultiplier)) {
             this.generateFood();
             this.lastFoodTime = currentTime;
         }
 
+        // Update and draw food
         this.drawFood();
 
+        // Update and draw fishes
         for (let i = 0; i < this.speedMultiplier; i++) {
             for (let j = this.fishes.length - 1; j >= 0; j--) {
                 const fish = this.fishes[j];
@@ -84,21 +100,25 @@ class GeneticFishSimulation {
             }
         }
 
+        // Draw fishes
         for (const fish of this.fishes) {
             fish.draw(this.ctx);
         }
 
-        requestAnimationFrame((time) => this.animate(time));
-    }
+        // Collect data every second of simulation time
+        if (Math.floor(this.simulationTime) > this.timeData.length) {
+            this.collectData();
+        }
 
-    setSpeed(speed) {
-        this.speedMultiplier = speed;
+        this.drawTime();
+
+        requestAnimationFrame((time) => this.animate(time));
     }
 
     generateFood() {
         const food = {
-            x: Math.random() * this.canvas.width,
-            y: Math.random() * this.canvas.height,
+            x: (Math.random() * (this.canvas.width - 100)) + 50,
+            y: (Math.random() * (this.canvas.height - 100)) + 50,
             radius: 3,
             color: 'green'
         };
@@ -112,6 +132,83 @@ class GeneticFishSimulation {
             this.ctx.fillStyle = food.color;
             this.ctx.fill();
         }
+    }
+
+    drawTime() {
+        const minutes = Math.floor(this.simulationTime / 60);
+        const seconds = Math.floor(this.simulationTime % 60);
+        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        this.ctx.font = '16px Arial';
+        this.ctx.fillStyle = 'white';
+        this.ctx.fillText(`Time: ${timeString}`, 10, 20);
+    }
+
+    collectData() {
+        if (this.fishes.length === 0) return;
+
+        const meanValues = {
+            size: 0,
+            speed: 0,
+            energy: 0,
+            metabolism: 0
+        };
+
+        this.fishes.forEach(fish => {
+            meanValues.size += fish.size;
+            meanValues.speed += fish.speed;
+            meanValues.energy += fish.energy;
+            meanValues.metabolism += fish.metabolism;
+        });
+
+        const fishCount = this.fishes.length;
+        for (let key in meanValues) {
+            meanValues[key] /= fishCount;
+        }
+
+        this.timeData.push(Math.floor(this.simulationTime));
+        this.fishData.push(meanValues);
+    }
+
+    getGraphData() {
+        const normalizedData = this.normalizeData(this.fishData);
+        return {
+            labels: this.timeData,
+            datasets: [
+                { label: 'Average Size', data: normalizedData.map(d => d.size) },
+                { label: 'Average Speed', data: normalizedData.map(d => d.speed) },
+                { label: 'Average Energy', data: normalizedData.map(d => d.energy) },
+                { label: 'Average Metabolism', data: normalizedData.map(d => d.metabolism) }
+            ]
+        };
+    }
+
+    normalizeData(data) {
+        const maxValues = {
+            size: Math.max(...data.map(d => d.size), 1),
+            speed: Math.max(...data.map(d => d.speed), 1),
+            energy: Math.max(...data.map(d => d.energy), 1),
+            metabolism: Math.max(...data.map(d => d.metabolism), 1)
+        };
+
+        return data.map(d => ({
+            size: d.size / maxValues.size,
+            speed: d.speed / maxValues.speed,
+            energy: d.energy / maxValues.energy,
+            metabolism: d.metabolism / maxValues.metabolism
+        }));
+    }
+
+    setSpeed(speed) {
+        this.speedMultiplier = speed;
+    }
+
+    getSimulationDuration() {
+        const totalSeconds = Math.floor(this.simulationTime);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 
     updateParameters(newParams) {
