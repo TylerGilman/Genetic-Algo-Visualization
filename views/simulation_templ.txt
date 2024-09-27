@@ -1,0 +1,9 @@
+<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Genetic Fish Simulation</title><link rel=\"stylesheet\" href=\"/static/css/styles.css\"><script src=\"https://unpkg.com/htmx.org@1.9.10\"></script></head><body><div id=\"simulation-container\"><canvas id=\"fishtank\"></canvas></div><div id=\"controls-container\"><h1>Genetic Fish Simulation</h1>
+</div><script src=\"/static/js/fish.js\"></script><script src=\"/static/js/genetic-algorithm.js\"></script><script src=\"/static/js/environment-parameters.js\"></script><script src=\"/static/js/simulation-stats.js\"></script><script src=\"/static/js/genetic-fish-simulation.js\"></script><script src=\"/static/js/ui-controller.js\"></script></body></html>
+<form id=\"simulation-form\"><label for=\"populationSize\">Population Size:</label> <input type=\"number\" id=\"populationSize\" name=\"populationSize\" value=\"
+\"><br><label for=\"mutationRate\">Mutation Rate:</label> <input type=\"number\" id=\"mutationRate\" name=\"mutationRate\" step=\"0.01\" value=\"
+\"><br><label for=\"crossoverRate\">Crossover Rate:</label> <input type=\"number\" id=\"crossoverRate\" name=\"crossoverRate\" step=\"0.01\" value=\"
+\"><br><label for=\"foodAvailability\">Food Availability:</label> <input type=\"number\" id=\"foodAvailability\" name=\"foodAvailability\" step=\"0.1\" value=\"
+\"><br><label for=\"predatorDensity\">Predator Density:</label> <input type=\"number\" id=\"predatorDensity\" name=\"predatorDensity\" step=\"0.1\" value=\"
+\"><br><label for=\"waterTemperature\">Water Temperature:</label> <input type=\"number\" id=\"waterTemperature\" name=\"waterTemperature\" step=\"0.1\" value=\"
+\"><br><button type=\"button\" id=\"start-simulation\">Start Simulation</button></form><div id=\"stats\"></div>
