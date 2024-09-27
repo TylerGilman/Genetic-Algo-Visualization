@@ -52,16 +52,19 @@ class ConstrainedPoint {
 }
 
 class Fish {
-    constructor(x, y, genome) {
+    constructor(x, y, genome, waterTemperature) {
         this.genome = genome;
         this.color = this.getColorFromGenome();
         this.speed = this.getSpeedFromGenome();
-        this.constraintRadius = 4;
+        this.size = this.getSizeFromGenome();
+        this.constraintRadius = 4 * this.size;
         this.numSegments = 6;
+        this.energy = 100;
+        this.metabolism = this.calculateMetabolism(waterTemperature);
         this.bodySizes = Array.from({ length: this.numSegments }, (_, i) => {
-            if (i === 0) return 6;
+            if (i === 0) return 6 * this.size;
             const t = i / (this.numSegments - 1);
-            return 6 * (1 - Math.pow(t, 1.1));
+            return 6 * this.size * (1 - Math.pow(t, 1.1));
         });
         this.maxBendAngle = Math.PI / 4;
 
@@ -83,7 +86,19 @@ class Fish {
         return this.genome.speed * 5;
     }
 
-    update(canvas) {
+    getSizeFromGenome() {
+        return this.genome.size * 0.5 + 0.5; // Size between 0.5 and 1
+    }
+
+    calculateMetabolism(waterTemperature) {
+        // Base metabolism inversely proportional to size
+        const baseMetabolism = 1 / this.size;
+        // Temperature multiplier
+        const tempMultiplier = 1 + (waterTemperature - 20) / 20;
+        return baseMetabolism * tempMultiplier;
+    }
+
+    update(canvas, foodItems, waterTemperature) {
         this.points[0].move(canvas);
         for (const point of this.points) {
             point.constrain();
@@ -92,6 +107,45 @@ class Fish {
         for (let i = 0; i < this.points.length - 2; i++) {
             this.limitJointAngle(this.points[i], this.points[i + 1], this.points[i + 2]);
         }
+
+        // Check for nearby food and eat it
+        this.eat(foodItems);
+
+        // Lose energy based on metabolism
+        this.energy -= this.metabolism;
+
+        // Update metabolism based on current water temperature
+        this.metabolism = this.calculateMetabolism(waterTemperature);
+    }
+
+    eat(foodItems) {
+        const headX = this.points[0].x;
+        const headY = this.points[0].y;
+        const eatDistance = 10 * this.size;
+
+        for (let i = foodItems.length - 1; i >= 0; i--) {
+            const food = foodItems[i];
+            const distance = Math.sqrt((food.x - headX) ** 2 + (food.y - headY) ** 2);
+            if (distance < eatDistance) {
+                this.energy = Math.min(this.energy + 25, 100);
+                foodItems.splice(i, 1);
+                break;
+            }
+        }
+    }
+
+    isDead() {
+        return this.energy <= 0;
+    }
+
+    getStats() {
+        return {
+            color: this.color,
+            speed: this.speed.toFixed(2),
+            size: this.size.toFixed(2),
+            energy: this.energy.toFixed(2),
+            metabolism: this.metabolism.toFixed(4)
+        };
     }
 
     limitJointAngle(p1, p2, p3) {

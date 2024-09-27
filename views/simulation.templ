@@ -12,11 +12,11 @@ templ SimulationPage(params simulation.SimulationParameters) {
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Genetic Fish Simulation</title>
-        <link rel="stylesheet" href="/static/css/styles.css" />
+        <link type="css" rel="stylesheet" href="/static/css/styles.css" />
         <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     </head>
     <body>
-        <div id="simulation-container">
+        <div id="simulation-container" style="width: 100%; height: 50vh;">
             <canvas id="fishtank"></canvas>
         </div>
         <div id="controls-container">
@@ -35,26 +35,28 @@ templ SimulationPage(params simulation.SimulationParameters) {
 
 templ SimulationContent(params simulation.SimulationParameters) {
     <form id="simulation-form">
-        <label for="populationSize">Population Size:</label>
-        <input type="number" id="populationSize" name="populationSize" value={fmt.Sprint(params.PopulationSize)} /><br />
+        <label for="populationSize">Initial Population Size:</label>
+        <input type="number" id="populationSize" name="populationSize" value={fmt.Sprint(params.PopulationSize)} min="1" max="100" /><br />
 
         <label for="mutationRate">Mutation Rate:</label>
-        <input type="number" id="mutationRate" name="mutationRate" step="0.01" value={fmt.Sprintf("%.2f", params.MutationRate)} /><br />
+        <input type="number" id="mutationRate" name="mutationRate" step="0.01" value={fmt.Sprintf("%.2f", params.MutationRate)} min="0" max="1" /><br />
 
         <label for="crossoverRate">Crossover Rate:</label>
-        <input type="number" id="crossoverRate" name="crossoverRate" step="0.01" value={fmt.Sprintf("%.2f", params.CrossoverRate)} /><br />
+        <input type="number" id="crossoverRate" name="crossoverRate" step="0.01" value={fmt.Sprintf("%.2f", params.CrossoverRate)} min="0" max="1" /><br />
 
-        <label for="foodAvailability">Food Availability:</label>
-        <input type="number" id="foodAvailability" name="foodAvailability" step="0.1" value={fmt.Sprintf("%.1f", params.FoodAvailability)} /><br />
+        <label for="foodAvailability">Food Generation Rate (items/second):</label>
+        <input type="number" id="foodAvailability" name="foodAvailability" step="0.1" value={fmt.Sprintf("%.1f", params.FoodAvailability)} min="0.1" max="10" /><br />
 
-        <label for="predatorDensity">Predator Density:</label>
-        <input type="number" id="predatorDensity" name="predatorDensity" step="0.1" value={fmt.Sprintf("%.1f", params.PredatorDensity)} /><br />
-
-        <label for="waterTemperature">Water Temperature:</label>
-        <input type="number" id="waterTemperature" name="waterTemperature" step="0.1" value={fmt.Sprintf("%.1f", params.WaterTemperature)} /><br />
+        <label for="waterTemperature">Water Temperature (°C):</label>
+        <input type="number" id="waterTemperature" name="waterTemperature" step="0.1" value={fmt.Sprintf("%.1f", params.WaterTemperature)} min="0" max="40" /><br />
 
         <button type="button" id="start-simulation">Start Simulation</button>
     </form>
+
+    <div id="simulation-controls">
+        <label for="simulation-speed">Simulation Speed: <span id="speed-display">1.0x</span></label>
+        <input type="range" id="simulation-speed" min="0.1" max="5" step="0.1" value="1">
+    </div>
 
     <div id="stats"></div>
 }
