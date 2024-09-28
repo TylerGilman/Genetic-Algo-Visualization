@@ -89,6 +89,7 @@ class Fish {
     getSizeFromGenome() {
         return this.genome.size * 0.5 + 0.5; // Size between 0.5 and 1
     }
+
     calculateMetabolism(waterTemperature) {
         // Ensure temperature is within the -2°C to 30°C range
         const temp = Math.max(-2, Math.min(30, waterTemperature));
