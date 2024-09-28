@@ -3,36 +3,55 @@ class UIController {
         console.log("Initializing UIController");
         this.simulation = null;
         this.startButton = document.getElementById('start-simulation');
+        this.endButton = document.createElement('button');
+        this.endButton.id = 'end-simulation';
+        this.endButton.textContent = 'End Simulation';
+        this.endButton.style.display = 'none';
+        this.startButton.parentNode.insertBefore(this.endButton, this.startButton.nextSibling);
         this.form = document.getElementById('simulation-form');
         this.statsElement = document.getElementById('stats');
         this.speedControl = document.getElementById('simulation-speed');
         this.speedDisplay = document.getElementById('speed-display');
         this.updateInterval = null;
-        this.chart = null;
-        this.simulationDurationElement = document.getElementById('simulation-duration');
+        this.charts = {
+            size: null,
+            speed: null,
+            energy: null,
+            metabolism: null
+        };
         this.timerElement = document.getElementById('simulation-timer');
 
-        if (!this.startButton || !this.form || !this.statsElement || !this.speedControl || !this.speedDisplay || !this.simulationDurationElement || !this.timerElement) {
+        if (!this.startButton || !this.form || !this.statsElement || !this.speedControl || !this.speedDisplay || !this.timerElement) {
             console.error("Some UI elements are missing");
         }
 
         this.initEventListeners();
-        this.initChart();
         this.resizeSimulationContainer();
         window.addEventListener('resize', () => this.resizeSimulationContainer());
         console.log("UIController initialized");
     }
 
-    resizeSimulationContainer() {
-        const container = document.getElementById('simulation-container');
-        if (container) {
-            container.style.height = `${window.innerHeight / 2}px`;
-        }
+    initEventListeners() {
+        console.log("Initializing event listeners");
+        this.form.addEventListener('submit', (e) => {
+            e.preventDefault(); // Prevent form submission
+            this.startSimulation();
+        });
+        this.startButton.addEventListener('click', (e) => {
+            e.preventDefault(); // Prevent button click from submitting form
+            console.log("Start button clicked");
+            this.startSimulation();
+        });
+        this.endButton.addEventListener('click', () => {
+            console.log("End button clicked");
+            this.endSimulation();
+        });
+        this.speedControl.addEventListener('input', () => this.updateSimulationSpeed());
     }
 
     startSimulation() {
         console.log("Starting simulation");
-        this.resetChart();
+        this.initCharts(); // Initialize charts here
         const params = this.getFormParams();
         console.log("Simulation parameters:", params);
 
@@ -54,64 +73,121 @@ class UIController {
         console.log("Simulation started and stats update interval set");
 
         // Reset the timer display
-        this.updateTimer("00:00:00");
+        this.updateTimerDisplay("00:00:00");
+
+        // Show end button and hide start button
+        this.startButton.style.display = 'none';
+        this.endButton.style.display = 'inline-block';
     }
 
-    updateTimer(duration) {
-        if (this.timerElement) {
-            this.timerElement.textContent = `Elapsed Time: ${duration}`;
-        }
-    }
+    initCharts() {
+        const chartConfigs = [
+            { id: 'sizeChart', label: 'Average Size', color: 'red' },
+            { id: 'speedChart', label: 'Average Speed', color: 'blue' },
+            { id: 'energyChart', label: 'Average Energy', color: 'green' },
+            { id: 'metabolismChart', label: 'Average Metabolism', color: 'purple' }
+        ];
 
-    initEventListeners() {
-        console.log("Initializing event listeners");
-        this.startButton.addEventListener('click', () => {
-            console.log("Start button clicked");
-            this.startSimulation();
-        });
-        this.speedControl.addEventListener('input', () => this.updateSimulationSpeed());
-    }
+        chartConfigs.forEach(config => {
+            const ctx = document.getElementById(config.id);
+            if (!ctx) {
+                console.error(`${config.id} canvas not found`);
+                return;
+            }
 
-    initChart() {
-        const ctx = document.getElementById('fishChart');
-        if (!ctx) {
-            console.error("Fish chart canvas not found");
-            return;
-        }
-        this.chart = new Chart(ctx.getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [
-                    { label: 'Average Size', data: [], borderColor: 'red' },
-                    { label: 'Average Speed', data: [], borderColor: 'blue' },
-                    { label: 'Average Energy', data: [], borderColor: 'green' },
-                    { label: 'Average Metabolism', data: [], borderColor: 'purple' }
-                ]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    x: {
-                        type: 'linear',
-                        position: 'bottom',
-                        title: {
-                            display: true,
-                            text: 'Time (seconds)'
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        max: 1,
-                        title: {
-                            display: true,
-                            text: 'Normalized Value'
+            // Destroy existing chart if it exists
+            if (this.charts[config.id.replace('Chart', '')]) {
+                this.charts[config.id.replace('Chart', '')].destroy();
+            }
+
+            this.charts[config.id.replace('Chart', '')] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: config.label,
+                        data: [],
+                        borderColor: config.color,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: 'Time (seconds)'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: config.label
+                            }
                         }
                     }
                 }
-            }
+            });
         });
-        console.log("Chart initialized");
+        console.log("Charts initialized:", Object.keys(this.charts));
+    }
+
+    updateCharts(data) {
+        if (!data || !data.labels || !data.datasets) {
+            console.error("Invalid data format for updating charts");
+            return;
+        }
+
+        for (const [key, chart] of Object.entries(this.charts)) {
+            if (!chart) {
+                console.error(`Chart for ${key} not initialized`);
+                continue;
+            }
+            const dataset = data.datasets.find(d => d.label.toLowerCase().includes(key));
+            if (dataset) {
+                chart.data.labels = data.labels;
+                chart.data.datasets[0].data = dataset.data;
+                chart.update();
+            } else {
+                console.error(`Dataset for ${key} not found`);
+            }
+        }
+    }
+
+    endSimulation() {
+        console.log("Ending simulation");
+        if (this.simulation) {
+            this.simulation.isRunning = false;
+        }
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+        }
+        // Show start button and hide end button
+        this.startButton.style.display = 'inline-block';
+        this.endButton.style.display = 'none';
+    }
+
+    updateSimulationSpeed() {
+        if (this.simulation) {
+            const speed = parseFloat(this.speedControl.value);
+            this.simulation.setSpeed(speed);
+            if (speed === 0) {
+                this.speedDisplay.textContent = "Paused";
+            } else {
+                this.speedDisplay.textContent = `${speed.toFixed(1)}x`;
+            }
+        }
+    }
+
+    updateTimerDisplay(duration) {
+        if (this.timerElement) {
+            this.timerElement.textContent = `Elapsed Time: ${duration}`;
+        }
     }
 
     getFormParams() {
@@ -128,7 +204,7 @@ class UIController {
     updateStats() {
         if (this.simulation) {
             const graphData = this.simulation.getGraphData();
-            this.updateChart(graphData);
+            this.updateCharts(graphData);
             const stats = {
                 populationSize: this.simulation.fishes.length,
                 foodCount: this.simulation.foodItems.length,
@@ -138,7 +214,7 @@ class UIController {
                 duration: this.simulation.getSimulationDuration()
             };
             this.updateStatsDisplay(stats);
-            this.updateTimer(stats.duration);
+            this.updateTimerDisplay(stats.duration);
         }
     }
 
@@ -181,33 +257,10 @@ class UIController {
         this.statsElement.innerHTML = html;
     }
 
-    updateChart(data) {
-        if (!this.chart) {
-            console.error("Chart not initialized");
-            return;
-        }
-        this.chart.data.labels = data.labels;
-        data.datasets.forEach((dataset, index) => {
-            this.chart.data.datasets[index].data = dataset.data;
-        });
-        this.chart.update();
-    }
-
-    updateSimulationSpeed() {
-        if (this.simulation) {
-            const speed = parseFloat(this.speedControl.value);
-            this.simulation.setSpeed(speed);
-            this.speedDisplay.textContent = `${speed.toFixed(1)}x`;
-        }
-    }
-
-    resetChart() {
-        if (this.chart) {
-            this.chart.data.labels = [];
-            this.chart.data.datasets.forEach((dataset) => {
-                dataset.data = [];
-            });
-            this.chart.update();
+    resizeSimulationContainer() {
+        const container = document.getElementById('simulation-container');
+        if (container) {
+            container.style.height = `${window.innerHeight / 2}px`;
         }
     }
 }

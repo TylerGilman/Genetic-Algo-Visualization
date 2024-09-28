@@ -12,11 +12,19 @@ class GeneticFishSimulation {
         this.lastFoodTime = 0;
         this.timeData = [];
         this.fishData = [];
+        this.isPaused = false;
 
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
         
         this.initializeFishes();
+    }
+
+    start() {
+        this.isRunning = true;
+        this.lastAnimationTime = performance.now();
+        this.lastFoodTime = this.lastAnimationTime;
+        this.animate(this.lastAnimationTime);
     }
 
     resizeCanvas() {
@@ -48,11 +56,6 @@ class GeneticFishSimulation {
         }
     }
 
-    start() {
-        this.isRunning = true;
-        this.lastAnimationTime = performance.now();
-        this.animate(this.lastAnimationTime);
-    }
 
     reset(params) {
         this.params = params;
@@ -64,55 +67,6 @@ class GeneticFishSimulation {
         this.timeData = [];
         this.fishData = [];
         this.initializeFishes();
-    }
-
-    animate(currentTime) {
-        if (!this.isRunning) return;
-
-        if (this.lastAnimationTime === 0) {
-            this.lastAnimationTime = currentTime;
-        }
-
-        const deltaTime = (currentTime - this.lastAnimationTime) / 1000; // Convert to seconds
-        this.simulationTime += deltaTime * this.speedMultiplier;
-        this.lastAnimationTime = currentTime;
-
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // Generate food
-        if (currentTime - this.lastFoodTime > 1000 / (this.params.foodAvailability * this.speedMultiplier)) {
-            this.generateFood();
-            this.lastFoodTime = currentTime;
-        }
-
-        // Update and draw food
-        this.drawFood();
-
-        // Update and draw fishes
-        for (let i = 0; i < this.speedMultiplier; i++) {
-            for (let j = this.fishes.length - 1; j >= 0; j--) {
-                const fish = this.fishes[j];
-                fish.update(this.canvas, this.foodItems, this.params.waterTemperature);
-                
-                if (fish.isDead()) {
-                    this.fishes.splice(j, 1);
-                }
-            }
-        }
-
-        // Draw fishes
-        for (const fish of this.fishes) {
-            fish.draw(this.ctx);
-        }
-
-        // Collect data every second of simulation time
-        if (Math.floor(this.simulationTime) > this.timeData.length) {
-            this.collectData();
-        }
-
-        this.drawTime();
-
-        requestAnimationFrame((time) => this.animate(time));
     }
 
     generateFood() {
@@ -199,8 +153,59 @@ class GeneticFishSimulation {
         }));
     }
 
+    animate(currentTime) {
+        if (!this.isRunning) return;
+
+        if (this.isPaused) {
+            requestAnimationFrame((time) => this.animate(time));
+            return;
+        }
+
+        const deltaTime = (currentTime - this.lastAnimationTime) / 1000; // Convert to seconds
+        this.simulationTime += deltaTime * this.speedMultiplier;
+
+        // Generate food
+        if (currentTime - this.lastFoodTime > this.foodGenerationInterval / this.speedMultiplier) {
+            this.generateFood();
+            this.lastFoodTime = currentTime;
+        }
+
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Update and draw food
+        this.drawFood();
+
+        // Update and draw fishes
+        for (let i = 0; i < this.speedMultiplier; i++) {
+            for (let j = this.fishes.length - 1; j >= 0; j--) {
+                const fish = this.fishes[j];
+                fish.update(this.canvas, this.foodItems, this.params.waterTemperature);
+                
+                if (fish.isDead()) {
+                    this.fishes.splice(j, 1);
+                }
+            }
+        }
+
+        // Draw fishes
+        for (const fish of this.fishes) {
+            fish.draw(this.ctx);
+        }
+
+        // Collect data every second of simulation time
+        if (Math.floor(this.simulationTime) > this.timeData.length) {
+            this.collectData();
+        }
+
+        this.drawTime();
+
+        this.lastAnimationTime = currentTime;
+        requestAnimationFrame((time) => this.animate(time));
+    }
+
     setSpeed(speed) {
         this.speedMultiplier = speed;
+        this.isPaused = (speed === 0);
     }
 
     getSimulationDuration() {

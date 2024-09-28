@@ -16,6 +16,7 @@ templ SimulationPage(params simulation.SimulationParameters) {
         <script src="https://unpkg.com/htmx.org@1.9.10"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     </head>
     <body>
         <div id="simulation-timer" style="font-size: 1.2em; font-weight: bold; text-align: center; margin-bottom: 10px;">Elapsed Time: 00:00:00</div>
@@ -58,10 +59,34 @@ templ SimulationContent(params simulation.SimulationParameters) {
     </form>
     <div id="simulation-controls">
         <label for="simulation-speed">Simulation Speed: <span id="speed-display">1.0x</span></label>
-        <input type="range" id="simulation-speed" min="0.1" max="5" step="0.1" value="1">
+        <input type="range" id="simulation-speed" min="0" max="5" step="0.1" value="1">
     </div>
     <div id="stats"></div>
-    <canvas id="fishChart" width="400" height="200"></canvas>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <div class="row">
+        <div class="col-sm-6 col-l-3">
+            <p>Size</p>
+            <div class="chart-container" style="position: relative; height:200px; width:100%">
+                <canvas id="sizeChart"></canvas>
+            </div>
+        </div>
+        <div class="col-sm-6 col-l-3">
+            <p>Speed</p>
+            <div class="chart-container" style="position: relative; height:200px; width:100%">
+                <canvas id="speedChart"></canvas>
+            </div>
+        </div>
+        <div class="col-sm-6 col-l-3">
+            <p>Energy</p>
+            <div class="chart-container" style="position: relative; height:200px; width:100%">
+                <canvas id="energyChart"></canvas>
+            </div>
+        </div>
+        <div class="col-sm-6 col-l-3">
+            <p>Metabolism</p>
+            <div class="chart-container" style="position: relative; height:200px; width:100%">
+                <canvas id="metabolismChart"></canvas>
+            </div>
+        </div>
+    </div>
 }
 
