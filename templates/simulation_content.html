@@ -1,0 +1,50 @@
+{# templates/simulation_content.html #}
+<form id="simulation-form">
+    <label for="populationSize">Initial Population Size:</label>
+    <input type="number" id="populationSize" name="populationSize" value="{{ params.population_size }}" min="1" max="100" /><br />
+
+    <label for="mutationRate">Mutation Rate:</label>
+    <input type="number" id="mutationRate" name="mutationRate" step="0.01" value="{{ '%.2f'|format(params.mutation_rate) }}" min="0" max="1" /><br />
+
+    <label for="crossoverRate">Crossover Rate:</label>
+    <input type="number" id="crossoverRate" name="crossoverRate" step="0.01" value="{{ '%.2f'|format(params.crossover_rate) }}" min="0" max="1" /><br />
+
+    <label for="foodAvailability">Food Generation Rate (items/second):</label>
+    <input type="number" id="foodAvailability" name="foodAvailability" step="0.1" value="{{ '%.1f'|format(params.food_availability) }}" min="0.1" max="10" /><br />
+
+    <label for="waterTemperature">Water Temperature (°C):</label>
+    <input type="number" id="waterTemperature" name="waterTemperature" step="0.1" value="{{ '%.1f'|format(params.water_temperature) }}" min="0" max="40" /><br />
+
+    <button type="button" id="start-simulation">Start Simulation</button>
+</form>
+<div id="simulation-controls">
+    <label for="simulation-speed">Simulation Speed: <span id="speed-display">1.0x</span></label>
+    <input type="range" id="simulation-speed" min="0" max="5" step="0.1" value="1">
+</div>
+<div id="stats"></div>
+<div class="row">
+    <div class="col-sm-6 col-l-3">
+        <p>Size</p>
+        <div class="chart-container" style="position: relative; height:200px; width:100%">
+            <canvas id="sizeChart"></canvas>
+        </div>
+    </div>
+    <div class="col-sm-6 col-l-3">
+        <p>Speed</p>
+        <div class="chart-container" style="position: relative; height:200px; width:100%">
+            <canvas id="speedChart"></canvas>
+        </div>
+    </div>
+    <div class="col-sm-6 col-l-3">
+        <p>Energy</p>
+        <div class="chart-container" style="position: relative; height:200px; width:100%">
+            <canvas id="energyChart"></canvas>
+        </div>
+    </div>
+    <div class="col-sm-6 col-l-3">
+        <p>Metabolism</p>
+        <div class="chart-container" style="position: relative; height:200px; width:100%">
+            <canvas id="metabolismChart"></canvas>
+        </div>
+    </div>
+</div>
