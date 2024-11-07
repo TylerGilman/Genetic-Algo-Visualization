@@ -137,27 +137,33 @@ class UIController {
         console.log("Charts initialized:", Object.keys(this.charts));
     }
 
-    updateCharts(data) {
-        if (!data || !data.labels || !data.datasets) {
-            console.error("Invalid data format for updating charts");
+updateCharts(data) {
+    if (!data || !data.labels || !data.datasets) {
+        console.error("Invalid data format for updating charts");
+        return;
+    }
+
+    Object.entries(this.charts).forEach(([key, chart]) => {
+        if (!chart) {
+            console.error(`Chart for ${key} not initialized`);
             return;
         }
-
-        for (const [key, chart] of Object.entries(this.charts)) {
-            if (!chart) {
-                console.error(`Chart for ${key} not initialized`);
-                continue;
-            }
-            const dataset = data.datasets.find(d => d.label.toLowerCase().includes(key));
-            if (dataset) {
-                chart.data.labels = data.labels;
-                chart.data.datasets[0].data = dataset.data;
-                chart.update();
-            } else {
-                console.error(`Dataset for ${key} not found`);
-            }
+        
+        const dataset = data.datasets.find(d => 
+            d.label.toLowerCase().includes(key.toLowerCase())
+        );
+        
+        if (dataset) {
+            console.log(`Updating ${key} chart with ${dataset.data.length} points`);
+            chart.data.labels = data.labels;
+            chart.data.datasets[0].data = dataset.data;
+            chart.data.datasets[0].borderColor = dataset.borderColor;
+            chart.update('quiet'); // Use quiet update for better performance
+        } else {
+            console.warn(`No data found for ${key} chart`);
         }
-    }
+    });
+}
 
     endSimulation() {
         console.log("Ending simulation");
@@ -190,16 +196,16 @@ class UIController {
         }
     }
 
-    getFormParams() {
-        const formData = new FormData(this.form);
-        const params = Object.fromEntries(formData.entries());
-
-        for (let key in params) {
-            params[key] = Number(params[key]);
-        }
-
-        return params;
-    }
+      getFormParams() {
+          return {
+              populationSize: Number(document.getElementById('populationSize').value),
+              mutation_rate: Number(document.getElementById('mutationRate').value),
+              crossover_rate: Number(document.getElementById('crossoverRate').value),
+              foodAvailability: Number(document.getElementById('foodAvailability').value),
+              water_temperature: Number(document.getElementById('waterTemperature').value),
+              generation_length: Number(document.getElementById('generation_length').value)
+          };
+      }
 
     updateStats() {
         if (this.simulation) {
@@ -218,13 +224,26 @@ class UIController {
         }
     }
 
-    updateStatsDisplay(stats) {
-        let html = `
-            <p>Population: ${stats.populationSize}</p>
-            <p>Food Available: ${stats.foodCount}</p>
-            <p>Water Temperature: ${stats.waterTemperature.toFixed(1)}°C</p>
-            <p>Simulation Speed: ${stats.simulationSpeed.toFixed(1)}x</p>
-            <table>
+updateStatsDisplay(stats) {
+    if (!stats || typeof stats !== 'object') {
+        console.error('Invalid stats object');
+        return;
+    }
+
+    // Base stats
+    let html = `
+        <div class="stats-section">
+            <p>Population: ${stats.populationSize || 0}</p>
+            <p>Food Available: ${stats.foodCount || 0}</p>
+            <p>Water Temperature: ${(stats.waterTemperature || 0).toFixed(1)}°C</p>
+            <p>Simulation Speed: ${(stats.simulationSpeed || 0).toFixed(1)}x</p>
+        </div>
+    `;
+
+    // Fish stats table
+    if (stats.fishStats && stats.fishStats.length > 0) {
+        html += `
+            <table class="stats-table">
                 <thead>
                     <tr>
                         <th>Color</th>
@@ -238,24 +257,32 @@ class UIController {
         `;
 
         stats.fishStats.forEach(fish => {
-            html += `
-                <tr>
-                    <td><div style="width: 20px; height: 20px; background-color: ${fish.color};"></div></td>
-                    <td>${fish.speed}</td>
-                    <td>${fish.size}</td>
-                    <td>${fish.energy}</td>
-                    <td>${fish.metabolism}</td>
-                </tr>
-            `;
+            if (fish) {
+                html += `
+                    <tr>
+                        <td><div style="width: 20px; height: 20px; background-color: ${fish.color || '#000'};"></div></td>
+                        <td>${fish.speed || '0'}</td>
+                        <td>${fish.size || '0'}</td>
+                        <td>${fish.energy || '0'}</td>
+                        <td>${fish.metabolism || '0'}</td>
+                    </tr>
+                `;
+            }
         });
 
         html += `
                 </tbody>
             </table>
         `;
-
-        this.statsElement.innerHTML = html;
+    } else {
+        html += '<p>No fish data available</p>';
     }
+
+    const statsElement = document.getElementById('stats');
+    if (statsElement) {
+        statsElement.innerHTML = html;
+    }
+}
 
     resizeSimulationContainer() {
         const container = document.getElementById('simulation-container');

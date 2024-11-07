@@ -12,10 +12,19 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div id="simulation-timer" style="font-size: 1.2em; font-weight: bold; text-align: center; margin-bottom: 10px;">Elapsed Time: 00:00:00</div>
+<style>
+#simulation-timer {
+    display: none; /* Hides the element but keeps it in the DOM */
+}
+</style>
+    <div id="simulation-timer" style="font-size: 1.2em; font-weight: bold; text-align: center; margin-bottom: 10px;">
+        Elapsed Time: 00:00:00
+    </div>
+
     <div id="simulation-container" style="width: 100%;">
         <canvas id="fishtank"></canvas>
     </div>
+
     <div id="controls-container">
         <h1>Genetic Fish Simulation</h1>
         {% include "simulation_content.html" %}

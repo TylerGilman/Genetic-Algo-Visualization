@@ -1,4 +1,5 @@
 {# templates/simulation_content.html #}
+
 <form id="simulation-form">
     <label for="populationSize">Initial Population Size:</label>
     <input type="number" id="populationSize" name="populationSize" value="{{ params.population_size }}" min="1" max="100" /><br />
@@ -15,36 +16,76 @@
     <label for="waterTemperature">Water Temperature (°C):</label>
     <input type="number" id="waterTemperature" name="waterTemperature" step="0.1" value="{{ '%.1f'|format(params.water_temperature) }}" min="0" max="40" /><br />
 
+
+    <div class="form-group">
+        <label for="generation_length">Generation Length (seconds):</label>
+        <input type="number" id="generation_length" name="generation_length" value="60" min="10" max="300">
+    </div>
+
     <button type="button" id="start-simulation">Start Simulation</button>
 </form>
+
 <div id="simulation-controls">
     <label for="simulation-speed">Simulation Speed: <span id="speed-display">1.0x</span></label>
     <input type="range" id="simulation-speed" min="0" max="5" step="0.1" value="1">
 </div>
+
 <div id="stats"></div>
+
 <div class="row">
     <div class="col-sm-6 col-l-3">
         <p>Size</p>
-        <div class="chart-container" style="position: relative; height:200px; width:100%">
+        <div class="chart-container">
             <canvas id="sizeChart"></canvas>
         </div>
     </div>
     <div class="col-sm-6 col-l-3">
         <p>Speed</p>
-        <div class="chart-container" style="position: relative; height:200px; width:100%">
+        <div class="chart-container">
             <canvas id="speedChart"></canvas>
         </div>
     </div>
     <div class="col-sm-6 col-l-3">
         <p>Energy</p>
-        <div class="chart-container" style="position: relative; height:200px; width:100%">
+        <div class="chart-container">
             <canvas id="energyChart"></canvas>
         </div>
     </div>
     <div class="col-sm-6 col-l-3">
         <p>Metabolism</p>
-        <div class="chart-container" style="position: relative; height:200px; width:100%">
+        <div class="chart-container">
             <canvas id="metabolismChart"></canvas>
         </div>
     </div>
+<style>
+.overall-stats {
+    display: flex;
+    justify-content: space-around;
+    margin: 10px 0;
+    padding: 10px;
+    background: rgba(0,0,0,0.05);
+    border-radius: 4px;
+}
+
+.overall-stats div {
+    padding: 0 10px;
+    font-weight: bold;
+}
+
+.stats-table {
+    width: 100%;
+    margin-top: 15px;
+    border-collapse: collapse;
+}
+
+.stats-table th, .stats-table td {
+    padding: 8px;
+    border: 1px solid #ddd;
+    text-align: center;
+}
+
+.stats-table th {
+    background-color: #f5f5f5;
+}
+</style>
 </div>

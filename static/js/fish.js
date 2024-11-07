@@ -90,6 +90,11 @@ class Fish {
         return this.genome.size * 0.5 + 0.5; // Size between 0.5 and 1
     }
 
+calculateFitness() {
+    // Simply use energy level as fitness
+    return this.energy;
+}
+
     calculateMetabolism(waterTemperature) {
         // Ensure temperature is within the -2°C to 30°C range
         const temp = Math.max(-2, Math.min(30, waterTemperature));
@@ -168,7 +173,7 @@ class Fish {
             color: this.color,
             speed: this.speed.toFixed(2),
             size: this.size.toFixed(2),
-            energy: this.energy.toFixed(2),
+            energy: this.energy.toFixed(2),         // Make sure we're returning the actual energy value
             metabolism: this.metabolism.toFixed(4)
         };
     }
