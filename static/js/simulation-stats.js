@@ -1,22 +1,22 @@
 class SimulationStats {
     constructor() {
-        this.currentStats = {
+        this.current_stats = {
             generation: 1,
-            averageFitness: 0,
-            bestFitness: 0,
-            populationSize: 0
+            average_fitness: 0,
+            best_fitness: 0,
+            population_size: 0
         };
     }
 
 update(population) {
     if (!population || population.length === 0) {
-        this.currentStats.populationSize = 0;
-        this.currentStats.averageFitness = 0;
-        this.currentStats.bestFitness = 0;
+        this.current_stats.population_size = 0;
+        this.current_stats.average_fitness = 0;
+        this.current_stats.best_fitness = 0;
         return;
     }
 
-    this.currentStats.populationSize = population.length;
+    this.current_stats.population_size = population.length;
     
     // Debug log population energy values
     console.log("Population energy values:", population.map(fish => ({
@@ -26,28 +26,28 @@ update(population) {
     
     // Use energy directly as fitness
     const energyValues = population.map(fish => Number(fish.energy) || 0);
-    this.currentStats.averageFitness = energyValues.reduce((a, b) => a + b, 0) / population.length;
-    this.currentStats.bestFitness = Math.max(...energyValues, 0);
+    this.current_stats.average_fitness = energyValues.reduce((a, b) => a + b, 0) / population.length;
+    this.current_stats.best_fitness = Math.max(...energyValues, 0);
     
     // Debug log stats
     console.log("Updated stats:", {
-        populationSize: this.currentStats.populationSize,
-        averageFitness: this.currentStats.averageFitness,
-        bestFitness: this.currentStats.bestFitness
+        population_size: this.current_stats.population_size,
+        average_fitness: this.current_stats.average_fitness,
+        best_fitness: this.current_stats.best_fitness
     });
 }
 
     getCurrentStats() {
         return {
-            generation: this.currentStats.generation,
-            populationSize: this.currentStats.populationSize,
-            averageFitness: Number(this.currentStats.averageFitness.toFixed(2)),
-            bestFitness: Number(this.currentStats.bestFitness.toFixed(2))
+            generation: this.current_stats.generation,
+            population_size: this.current_stats.population_size,
+            average_fitness: Number(this.current_stats.average_fitness.toFixed(2)),
+            best_fitness: Number(this.current_stats.best_fitness.toFixed(2))
         };
     }
 
     // Add this method to properly track generations
     setGeneration(gen) {
-        this.currentStats.generation = gen;
+        this.current_stats.generation = gen;
     }
 }

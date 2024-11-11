@@ -1,4 +1,3 @@
-<!-- Fish -->
 class ConstrainedPoint {
     constructor(x, y, constraintRadius, speed, isHead = false) {
         this.x = x;
@@ -52,15 +51,18 @@ class ConstrainedPoint {
 }
 
 class Fish {
-    constructor(x, y, genome, waterTemperature) {
+    constructor(x, y, genome, water_temperature) {
         this.genome = genome;
         this.color = this.getColorFromGenome();
         this.speed = this.getSpeedFromGenome();
         this.size = this.getSizeFromGenome();
         this.constraintRadius = 4 * this.size;
         this.numSegments = 6;
-        this.energy = 100;
-        this.metabolism = this.calculateMetabolism(waterTemperature);
+        this.energy = 100;  // Initialize energy
+        this.metabolism = this.calculateMetabolism(water_temperature);  // Fix initial metabolism
+        
+        // Store current water temperature for updates
+        this.current_temperature = water_temperature;
         this.bodySizes = Array.from({ length: this.numSegments }, (_, i) => {
             if (i === 0) return 6 * this.size;
             const t = i / (this.numSegments - 1);
@@ -78,57 +80,46 @@ class Fish {
         }
     }
 
-    getColorFromGenome() {
-        return `hsl(${this.genome.color * 360}, 80%, 50%)`;
-    }
 
-    getSpeedFromGenome() {
-        return this.genome.speed * 5;
-    }
-
-    getSizeFromGenome() {
-        return this.genome.size * 0.5 + 0.5; // Size between 0.5 and 1
-    }
-
-calculateFitness() {
-    // Simply use energy level as fitness
-    return this.energy;
-}
-
-    calculateMetabolism(waterTemperature) {
+    calculateMetabolism(water_temperature) {
+        // Fix temperature parameter name
         // Ensure temperature is within the -2°C to 30°C range
-        const temp = Math.max(-2, Math.min(30, waterTemperature));
+        const temp = Math.max(-2, Math.min(30, water_temperature));
 
-        // Base metabolic rate (BMR) calculation
-        // We'll use a simplified allometric equation: BMR = a * M^b
-        // where M is mass (we'll use size as a proxy), and a and b are constants
-        const a = 0.14; // Coefficient (adjust as needed)
-        const b = -0.25; // Exponent (typically between -0.2 and -0.3 for fish)
-        const basalMetabolicRate = a * Math.pow(this.size, b);
+        // Base metabolic rate affected by size and speed
+        const basalMetabolicRate = 0.14 * Math.pow(this.size, -0.25);
 
-        // Temperature effect using a modified Q10 principle
-        // We'll use a more complex curve that peaks around 20°C and drops off at higher temps
-        const Q10 = 2.5; // Typical Q10 value for biological systems
-        const optimalTemp = 20; // Temperature of peak metabolism
+        // Speed increases metabolism
+        const speedEffect = 1 + (this.speed / 5) * 0.5;
+
+        // Temperature effect (Q10 principle)
+        const Q10 = 2.5;
+        const optimalTemp = 20;
         const tempEffect = Math.pow(Q10, (temp - optimalTemp) / 10) * 
-                           (1 - 0.05 * Math.abs(temp - optimalTemp));
+                          (1 - 0.05 * Math.abs(temp - optimalTemp));
 
-        // Combine basal metabolic rate and temperature effect
-        let metabolism = basalMetabolicRate * tempEffect;
+        // Combine all effects
+        let metabolism = basalMetabolicRate * speedEffect * tempEffect;
 
         // Adjust for extreme temperatures
         if (temp < 0) {
-            metabolism *= 0.2 + 0.8 * (temp + 2) / 2; // Gradual reduction from 0°C to -2°C
+            metabolism *= 0.2 + 0.8 * (temp + 2) / 2;
         } else if (temp > 25) {
-            metabolism *= 0.5 + 0.5 * (30 - temp) / 5; // Gradual reduction from 25°C to 30°C
+            metabolism *= 0.5 + 0.5 * (30 - temp) / 5;
         }
 
-        // Ensure a minimum metabolism (e.g., 10% of basal rate)
+        // Ensure a minimum metabolism
         const minMetabolism = basalMetabolicRate * 0.1;
-        return Math.max(metabolism, minMetabolism);
+        
+        // Return rate per second
+        return Number(Math.max(metabolism, minMetabolism).toFixed(4));
     }
 
-    update(canvas, foodItems, waterTemperature) {
+    update(canvas, foodItems, water_temperature) {
+        // Store current temperature
+        this.current_temperature = water_temperature;
+        
+        // Update movement
         this.points[0].move(canvas);
         for (const point of this.points) {
             point.constrain();
@@ -141,12 +132,26 @@ calculateFitness() {
         // Check for nearby food and eat it
         this.eat(foodItems);
 
-        // Lose energy based on metabolism
-        this.energy -= this.metabolism;
-
-        // Update metabolism based on current water temperature
-        this.metabolism = this.calculateMetabolism(waterTemperature);
+        // Update metabolism based on current temperature
+        this.metabolism = this.calculateMetabolism(water_temperature);
+        
+        // Reduce energy based on metabolism (scale by speed multiplier if needed)
+        const energyLoss = this.metabolism;
+        this.energy = Math.max(0, this.energy - energyLoss);
     }
+
+    getColorFromGenome() {
+        return `hsl(${this.genome.color * 360}, 80%, 50%)`;
+    }
+
+    getSpeedFromGenome() {
+        return this.genome.speed * 5;
+    }
+
+    getSizeFromGenome() {
+        return this.genome.size * 0.5 + 0.5; // Size between 0.5 and 1
+    }
+
 
     eat(foodItems) {
         const headX = this.points[0].x;
@@ -157,25 +162,34 @@ calculateFitness() {
             const food = foodItems[i];
             const distance = Math.sqrt((food.x - headX) ** 2 + (food.y - headY) ** 2);
             if (distance < eatDistance) {
-                this.energy = Math.min(this.energy + 25, 100);
+                // Energy gain is affected by size (bigger fish need more food)
+                const energyGain = 25 / (0.5 + this.size * 0.5);
+                this.energy = Math.min(this.energy + energyGain, 100);
                 foodItems.splice(i, 1);
                 break;
             }
         }
     }
 
-    isDead() {
-        return this.energy <= 0;
-    }
-
     getStats() {
         return {
             color: this.color,
-            speed: this.speed.toFixed(2),
-            size: this.size.toFixed(2),
-            energy: this.energy.toFixed(2),         // Make sure we're returning the actual energy value
-            metabolism: this.metabolism.toFixed(4)
+            speed: Number(this.speed).toFixed(2),
+            size: Number(this.size).toFixed(2),
+            energy: Number(this.energy).toFixed(2),
+            metabolism: Number(this.metabolism).toFixed(4)
         };
+    }
+
+    calculateFitness() {
+        // Consider both current energy and efficiency
+        const energyFitness = this.energy;
+        const efficiencyFitness = (this.energy / this.metabolism) * 10;
+        return Number((energyFitness + efficiencyFitness) / 2);
+    }
+
+    isDead() {
+        return this.energy <= 0;
     }
 
     limitJointAngle(p1, p2, p3) {

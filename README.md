@@ -108,3 +108,13 @@ This project is open source and available for educational and research purposes.
 
 ---
 Note: This simulation is designed for educational purposes to demonstrate genetic algorithms and biological modeling concepts.
+
+
+## Todo 
+
+Fix selection. Need to try different types...
+1) Replace whole population with children of top 50%
+2) Replace bottom 50% with children of top 50%
+3) Replace parents with children, keep rest of population
+
+
