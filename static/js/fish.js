@@ -12,6 +12,18 @@ class ConstrainedPoint {
         this.waveAngle = 0.4;
     }
 
+    isDead() {
+      return this.energy <= 0;
+  }
+
+    get finalEnergy() {
+        return this._finalEnergy || this.energy;
+    }
+
+    set finalEnergy(value) {
+        this._finalEnergy = value;
+    }
+
     move(canvas) {
         if (this.isHead) {
             this.waveAngle += 0.1;
@@ -51,94 +63,204 @@ class ConstrainedPoint {
 }
 
 class Fish {
-    constructor(x, y, genome, water_temperature) {
-        this.genome = genome;
-        this.color = this.getColorFromGenome();
-        this.speed = this.getSpeedFromGenome();
-        this.size = this.getSizeFromGenome();
-        this.constraintRadius = 4 * this.size;
-        this.numSegments = 6;
-        this.energy = 100;  // Initialize energy
-        this.metabolism = this.calculateMetabolism(water_temperature);  // Fix initial metabolism
+constructor(x, y, genome, water_temperature) {
+    this.genome = genome;
+    this.color = this.getColorFromGenome();
+    this.speed = this.getSpeedFromGenome();
+    this.size = this.getSizeFromGenome();
+    
+    // Initialize neural network weights from genome if available
+    if (genome.neural_weights) {
+        this.wih = genome.neural_weights.wih;
+        this.who = genome.neural_weights.who;
+    } else {
+        this.wih = this.initializeMatrix(1, 5); // Input -> Hidden
+        this.who = this.initializeMatrix(2, 5); // Hidden -> Output
+    }
         
-        // Store current water temperature for updates
-        this.current_temperature = water_temperature;
+        // Physical properties adjusted for more realistic fish shape
+        this.constraintRadius = 3 * this.size; // Reduced for sleeker shape
+        this.numSegments = 8; // Increased segments for smoother movement
+        this.energy = 100;
+        this.metabolism = this.calculateMetabolism(water_temperature);
+        
+        // Body shape parameters
         this.bodySizes = Array.from({ length: this.numSegments }, (_, i) => {
-            if (i === 0) return 6 * this.size;
+            if (i === 0) return 4 * this.size; // Head slightly smaller
             const t = i / (this.numSegments - 1);
-            return 6 * this.size * (1 - Math.pow(t, 1.1));
+            return 3.5 * this.size * (1 - Math.pow(t, 0.8)); // More gradual taper
         });
-        this.maxBendAngle = Math.PI / 4;
-
+        
+        // Initialize points for fish body
         this.points = Array.from({ length: this.numSegments }, (_, i) =>
             new ConstrainedPoint(x + i * this.constraintRadius, y, this.constraintRadius, this.speed, i === 0)
         );
-
+        
+        // Connect points
         for (let i = 1; i < this.points.length; i++) {
             this.points[i].previousPoint = this.points[i - 1];
             this.points[i - 1].nextPoint = this.points[i];
         }
     }
 
-
-    calculateMetabolism(water_temperature) {
-        // Fix temperature parameter name
-        // Ensure temperature is within the -2°C to 30°C range
-        const temp = Math.max(-2, Math.min(30, water_temperature));
-
-        // Base metabolic rate affected by size and speed
-        const basalMetabolicRate = 0.14 * Math.pow(this.size, -0.25);
-
-        // Speed increases metabolism
-        const speedEffect = 1 + (this.speed / 5) * 0.5;
-
-        // Temperature effect (Q10 principle)
-        const Q10 = 2.5;
-        const optimalTemp = 20;
-        const tempEffect = Math.pow(Q10, (temp - optimalTemp) / 10) * 
-                          (1 - 0.05 * Math.abs(temp - optimalTemp));
-
-        // Combine all effects
-        let metabolism = basalMetabolicRate * speedEffect * tempEffect;
-
-        // Adjust for extreme temperatures
-        if (temp < 0) {
-            metabolism *= 0.2 + 0.8 * (temp + 2) / 2;
-        } else if (temp > 25) {
-            metabolism *= 0.5 + 0.5 * (30 - temp) / 5;
-        }
-
-        // Ensure a minimum metabolism
-        const minMetabolism = basalMetabolicRate * 0.1;
-        
-        // Return rate per second
-        return Number(Math.max(metabolism, minMetabolism).toFixed(4));
+    // Neural network initialization
+    initializeMatrix(rows, cols) {
+        return Array.from({ length: rows }, () =>
+            Array.from({ length: cols }, () => (Math.random() * 2) - 1)
+        );
     }
 
-    update(canvas, foodItems, water_temperature) {
-        // Store current temperature
-        this.current_temperature = water_temperature;
+    // Neural network forward pass
+    think(nearestFood) {
+        // Calculate normalized inputs
+        const dx = nearestFood.x - this.points[0].x;
+        const dy = nearestFood.y - this.points[0].y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+        const currentAngle = Math.atan2(
+            this.points[1].y - this.points[0].y,
+            this.points[1].x - this.points[0].x
+        );
         
-        // Update movement
-        this.points[0].move(canvas);
-        for (const point of this.points) {
-            point.constrain();
+        // Normalize input to [-1, 1]
+        const normalizedAngle = ((angle - currentAngle + Math.PI) % (2 * Math.PI) - Math.PI) / Math.PI;
+        
+        // Hidden layer
+        const hidden = this.wih[0].map(w => Math.tanh(w * normalizedAngle));
+        
+        // Output layer
+        const output = [0, 0];
+        for (let i = 0; i < 2; i++) {
+            output[i] = Math.tanh(
+                hidden.reduce((sum, h, j) => sum + h * this.who[i][j], 0)
+            );
         }
+        
+        return {
+            turn: output[0], // Turn rate [-1, 1]
+            speed: output[1]  // Speed adjustment [-1, 1]
+        };
+    }
 
-        for (let i = 0; i < this.points.length - 2; i++) {
-            this.limitJointAngle(this.points[i], this.points[i + 1], this.points[i + 2]);
-        }
-
-        // Check for nearby food and eat it
-        this.eat(foodItems);
-
-        // Update metabolism based on current temperature
+update(canvas, foodItems, water_temperature) {
+    if (this.isDead()) {
+        // Dead fish still lose energy but can't eat
         this.metabolism = this.calculateMetabolism(water_temperature);
-        
-        // Reduce energy based on metabolism (scale by speed multiplier if needed)
-        const energyLoss = this.metabolism;
-        this.energy = Math.max(0, this.energy - energyLoss);
+        this.energy -= this.metabolism;
+        return;
     }
+
+    let nearestFood = null;
+    let minDist = Infinity;
+    
+    for (const food of foodItems) {
+        const dist = Math.hypot(food.x - this.points[0].x, food.y - this.points[0].y);
+        if (dist < minDist) {
+            minDist = dist;
+            nearestFood = food;
+        }
+    }
+    
+    if (nearestFood) {
+        const response = this.think(nearestFood);
+        
+        if (this.points[0].isHead) {
+            this.points[0].angle += response.turn * 0.1;
+            this.points[0].speed = Math.max(0.1, Math.min(this.speed, 
+                this.points[0].speed + response.speed * 0.1));
+        }
+        this.eat(foodItems);
+    }
+
+    this.metabolism = this.calculateMetabolism(water_temperature);
+    const energyLoss = this.metabolism * (0.5 + this.points[0].speed / this.speed);
+    this.energy = Math.max(-100, this.energy - energyLoss); // Allow negative energy
+    
+    for (const point of this.points) {
+        point.move(canvas);
+        point.constrain();
+    }
+}
+
+    // Modified eat method to scale energy gain with size
+    eat(foodItems) {
+        const headX = this.points[0].x;
+        const headY = this.points[0].y;
+        const eatDistance = 10 * this.size;
+
+        for (let i = foodItems.length - 1; i >= 0; i--) {
+            const food = foodItems[i];
+            const distance = Math.sqrt((food.x - headX) ** 2 + (food.y - headY) ** 2);
+            if (distance < eatDistance) {
+                this.energy = 100
+                foodItems.splice(i, 1);
+                break;
+            }
+        }
+    }
+
+
+calculateMetabolism(water_temperature) {
+    // Temperature constraints
+    const temp = Math.max(-2, Math.min(35, water_temperature));
+
+    // Enhanced mass scaling for bigger advantage
+    // Increase the exponent to give larger fish more benefit
+    const mass = Math.pow(this.size, 3);
+    // Reduce base rate and adjust mass exponent for more size benefit
+    const basalMetabolicRate = 0.05 * Math.pow(mass, 0.65);  // Reduced from 0.75 to give larger fish more advantage
+
+    // Modified activity cost to be less punishing for large fish
+    const maxSpeedMultiplier = 8;  // Reduced from 10
+    const normalizedSpeed = this.speed / 5;
+    // Add size compensation to speed cost
+    const activityMultiplier = 1 + (maxSpeedMultiplier - 1) * Math.pow(normalizedSpeed, 2) * Math.pow(this.size, -0.2);
+
+    // Temperature effects
+    const Q10 = 2.3;
+    // Adjusted optimal temperature range
+    const optimalTemp = 15 + (1 - this.size) * 8;  // Reduced range from 10 to 8
+    
+    const thermalWindow = 10 + (this.size * 2);  // Larger fish have slightly wider thermal tolerance
+    const tempDiff = Math.abs(temp - optimalTemp);
+    let tempEffect;
+
+    if (tempDiff <= thermalWindow / 2) {
+        tempEffect = Math.pow(Q10, (temp - optimalTemp) / 10);
+    } else {
+        const outsideOptimalRange = tempDiff - (thermalWindow / 2);
+        // Larger fish handle temperature stress better
+        const efficiencyLoss = Math.exp(-outsideOptimalRange / (5 + this.size * 2));
+        tempEffect = Math.pow(Q10, (temp - optimalTemp) / 10) * efficiencyLoss;
+    }
+
+    // Modified temperature stress effects
+    if (temp < 0) {
+        // Larger fish handle cold better
+        const coldResistance = 0.2 + (this.size * 0.3);  // Added size benefit
+        tempEffect *= coldResistance + (1 - coldResistance) * (temp + 2) / 2;
+    } else if (temp > 30) {
+        // Larger fish handle heat stress better too
+        const heatResistance = Math.min(1, this.size * 0.5);
+        const heatStress = ((temp - 30) / 5) * (1 - heatResistance);
+        tempEffect *= Math.exp(-heatStress);
+    }
+
+    // Reduced surface area effect for better size scaling
+    const surfaceAreaEffect = Math.pow(this.size, -0.15);  // Changed from -0.25 to -0.15
+
+    // Combined metabolism with size-based efficiency bonus
+    let metabolism = basalMetabolicRate * activityMultiplier * tempEffect * surfaceAreaEffect;
+    
+    // Size-based efficiency bonus
+    const efficiencyBonus = 1 - (this.size * 0.2);  // Large fish are up to 20% more efficient
+    metabolism *= efficiencyBonus;
+
+    // Adjusted minimum metabolism
+    const minMetabolism = basalMetabolicRate * (0.1 - this.size * 0.02);  // Larger fish have lower minimum
+    
+    return Number(Math.max(metabolism, minMetabolism).toFixed(4));
+}
 
     getColorFromGenome() {
         return `hsl(${this.genome.color * 360}, 80%, 50%)`;
@@ -152,24 +274,6 @@ class Fish {
         return this.genome.size * 0.5 + 0.5; // Size between 0.5 and 1
     }
 
-
-    eat(foodItems) {
-        const headX = this.points[0].x;
-        const headY = this.points[0].y;
-        const eatDistance = 10 * this.size;
-
-        for (let i = foodItems.length - 1; i >= 0; i--) {
-            const food = foodItems[i];
-            const distance = Math.sqrt((food.x - headX) ** 2 + (food.y - headY) ** 2);
-            if (distance < eatDistance) {
-                // Energy gain is affected by size (bigger fish need more food)
-                const energyGain = 25 / (0.5 + this.size * 0.5);
-                this.energy = Math.min(this.energy + energyGain, 100);
-                foodItems.splice(i, 1);
-                break;
-            }
-        }
-    }
 
     getStats() {
         return {
