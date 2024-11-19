@@ -51,7 +51,7 @@
             <div class="control-group">
                 <label for="generation_length">Generation Length (seconds):</label>
                 <input type="range" id="generation_length" name="generation_length" 
-                    value="{{ params.generation_length }}" min="1" max="120" step="25"
+                    value="{{ params.generation_length }}" min="1" max="120" step="5"
                     oninput="this.nextElementSibling.value = this.value"
                 >
                 <output>{{ params.generation_length }}</output>
@@ -59,6 +59,12 @@
 
 
             <button type="button" id="start-simulation" class="control-button">Start Simulation</button>
+
+            <!-- Simulation Speed Control -->
+            <div id="simulation-controls" class="speed-control">
+                <label for="simulation-speed">Simulation Speed: <span id="speed-display">1.0x</span></label>
+                <input type="range" id="simulation-speed" min="0" max="5" step="0.1" value="1">
+            </div>
         </form>
     </div>
 
@@ -67,11 +73,6 @@
         <canvas id="fishtank"></canvas>
     </div>
 
-    <!-- Simulation Speed Control -->
-    <div id="simulation-controls" class="speed-control">
-        <label for="simulation-speed">Simulation Speed: <span id="speed-display">1.0x</span></label>
-        <input type="range" id="simulation-speed" min="0" max="5" step="0.1" value="1">
-    </div>
 
     <!-- Current Stats Display -->
     <div class="stats-overview">
