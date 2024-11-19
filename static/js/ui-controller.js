@@ -26,6 +26,24 @@ class UIController {
             generationCountdown: document.getElementById('generation-countdown')
         };
 
+        // Make generation elements optional to prevent crashes
+        if (!elements.generationDisplay) {
+            console.warn("Generation display element not found, creating one");
+            elements.generationDisplay = document.createElement('span');
+            elements.generationDisplay.id = 'generation-number';
+            if (elements.timerElement) {
+                elements.timerElement.parentNode.insertBefore(elements.generationDisplay, elements.timerElement);
+            }
+        }
+
+        if (!elements.generationCountdown) {
+            console.warn("Generation countdown element not found, creating one");
+            elements.generationCountdown = document.createElement('span');
+            elements.generationCountdown.id = 'generation-countdown';
+            if (elements.generationDisplay) {
+                elements.generationDisplay.parentNode.insertBefore(elements.generationCountdown, elements.generationDisplay.nextSibling);
+            }
+        }
 
         // Remove generation elements from required elements check
         const requiredElements = ['form', 'statsElement', 'speedControl', 'speedDisplay', 'timerElement'];

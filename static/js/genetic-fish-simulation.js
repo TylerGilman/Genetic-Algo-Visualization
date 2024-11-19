@@ -27,6 +27,7 @@ class GeneticFishSimulation {
         this.simulation_time = 0;
         this.last_animation_time = 0;
         this.stats = new SimulationStats();
+        this.logger = new SimulationLogger();
         this.time_data = [];
         this.fish_data = [];
         this.deadFish = []; 
@@ -49,7 +50,6 @@ class GeneticFishSimulation {
         // Initialize
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
-        this.initializeFishes();
 
         // Add stats display elements
         this.overall_stats_display = document.createElement('div');
@@ -78,7 +78,33 @@ class GeneticFishSimulation {
 
         // Initialize neural network stats chart
         this.initializeNeuralStatsChart();   
+
+        
+        this.initializeFishes();
     }
+
+    initializeFishes() {
+        this.fishes = [];
+        const maxAttempts = this.params.population_size * 2;
+        let attempts = 0;
+        
+        while (this.fishes.length < this.params.population_size && attempts < maxAttempts) {
+            attempts++;
+            const x = Math.random() * this.canvas.width;
+            const y = Math.random() * this.canvas.height;
+            
+            if (!this.isTooClose(x, y)) {
+                const genome = {
+                    color: Math.random(),
+                    speed: Math.random(),
+                    size: Math.random()
+                };
+                // Pass simulation instance to Fish constructor
+                this.fishes.push(new Fish(x, y, genome, this.params.water_temperature, this.logger));
+            }
+      }
+    }
+
 
     initializeNeuralStatsChart() {
         const ctx = document.getElementById('neural-weights-chart');
@@ -361,16 +387,16 @@ class GeneticFishSimulation {
     }
 
 updateAndDrawFishes(deltaTime) {
-    // Update dead fish energy/metabolism
+    // Update dead fish energy/metabolism (if using that feature)
     this.deadFish.forEach(fish => {
-        fish.update(this.canvas, [], this.params.water_temperature);
+        fish.update(this.canvas, [], this.fishes, this.params.water_temperature, this.logger);
     });
 
     // Update living fish
     for (let i = 0; i < this.speed_multiplier; i++) {
         for (let j = this.fishes.length - 1; j >= 0; j--) {
             const fish = this.fishes[j];
-            fish.update(this.canvas, this.food_items, this.params.water_temperature);
+            fish.update(this.canvas, this.food_items, this.fishes, this.params.water_temperature, this.logger);
             
             if (fish.isDead()) {
                 this.deadFish.push(this.fishes.splice(j, 1)[0]);
@@ -415,7 +441,7 @@ updateAndDrawFishes(deltaTime) {
                     speed: Math.random(),
                     size: Math.random()
                 };
-                this.fishes.push(new Fish(x, y, genome, this.params.water_temperature));
+                this.fishes.push(new Fish(x, y, genome, this.params.water_temperature, this.logger));
             }
         }
         
@@ -636,38 +662,43 @@ triggerBreeding() {
     });
 }
 
+
+
 handleBreedingResponse(newfish_data, breedingPool, nonBreedingPool, previousSpeed) {
     try {
         this.food_items = [];
         this.fishes = [];
 
-        console.log(`Creating new generation:`);
-        console.log(`- Breeding parents: ${breedingPool.length}`);
-        console.log(`- Non-breeding parents: ${nonBreedingPool.length}`);
-        console.log(`- Children: ${newfish_data.length}`);
-        console.log(`- Target: ${this.params.population_size}`);
-
-        // Add all children
+        // Add children with random positions
         newfish_data.forEach(fish_data => {
             const fish = new Fish(
                 Math.random() * this.canvas.width,
                 Math.random() * this.canvas.height,
                 fish_data.genome,
-                this.params.water_temperature
+                this.params.water_temperature,
+                this.logger
             );
             this.fishes.push(fish);
         });
 
-        // Reset and add breeding parents
-        breedingPool.forEach(parent => {
+        // Add parents back with new random positions and reset energy
+        [...breedingPool, ...nonBreedingPool].forEach(parent => {
+            parent.points.forEach(point => {
+                point.x = Math.random() * this.canvas.width;
+                point.y = Math.random() * this.canvas.height;
+            });
             parent.energy = 100;
             this.fishes.push(parent);
         });
+        // Log breeding event details
+        this.logger.log('breed', 
+            `Generation ${this.generation}: Created ${newfish_data.length} children from ${breedingPool.length} parents`
+        );
 
-        // Reset and add non-breeding parents
-        nonBreedingPool.forEach(parent => {
-            parent.energy = 100;
-            this.fishes.push(parent);
+        breedingPool.forEach(parent => {
+            this.logger.log('breed', 
+                `Parent fish (${parent.massInGrams.toFixed(1)}g) survived with energy ${parent.energy.toFixed(1)}`
+            );
         });
 
         console.log(`Final population: ${this.fishes.length}`);
@@ -687,6 +718,8 @@ handleBreedingResponse(newfish_data, breedingPool, nonBreedingPool, previousSpee
         this.is_breeding = false;
         this.setSpeed(previousSpeed);
     }
+
+
 }
 
     updateOverallStats() {
