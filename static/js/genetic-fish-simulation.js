@@ -593,67 +593,58 @@ triggerBreeding() {
     const previousSpeed = this.speed_multiplier;
     this.setSpeed(0);
 
-    // Sort all fish by energy
-    const allFish = [...this.fishes, ...this.deadFish];
-    const sortedFish = allFish.sort((a, b) => {
-        const energyA = a.isDead() ? a.finalEnergy : a.energy;
-        const energyB = b.isDead() ? b.finalEnergy : b.energy;
-        return energyB - energyA;
-    });
+    const livingFish = this.fishes.filter(fish => !fish.isDead());
+    const numToBreed = Math.ceil(livingFish.length / 2);
+    
+    // Sort by fitness
+    const sortedFish = livingFish.sort((a, b) => b.calculateFitness() - a.calculateFitness());
+    
+    // Split into breeding and non-breeding pools
+    const breedingPool = sortedFish.slice(0, numToBreed);
+    const nonBreedingPool = sortedFish.slice(numToBreed);
 
-    // Calculate our numbers
-    const totalNeeded = this.params.population_size;
-    const numBreedingPairs = Math.floor(totalNeeded / 4); // Each pair produces 2 children
-    const numBreedingFish = numBreedingPairs * 2;
-    const numChildren = numBreedingFish;  // Each pair makes 2 children
-    const numNonBreeding = totalNeeded - (numBreedingFish + numChildren);
+    console.log('Breeding pool composition:');
+    console.log(`- Total population needed: ${this.params.population_size}`);
+    console.log(`- Breeding pairs: ${Math.floor(breedingPool.length/2)} (${breedingPool.length} fish)`);
+    console.log(`- Non-breeding: ${nonBreedingPool.length}`);
+    console.log(`- Expected children: ${breedingPool.length}`);
+    console.log(`- Final total will be: ${breedingPool.length} + ${breedingPool.length} + ${nonBreedingPool.length} = ${breedingPool.length * 2 + nonBreedingPool.length}`);
 
-    // Select our pools
-    const breedingPool = sortedFish.slice(0, numBreedingFish);
-    const nonBreedingPool = sortedFish.slice(numBreedingFish, numBreedingFish + numNonBreeding);
-
-    console.log(`Breeding pool composition:`);
-    console.log(`- Total population needed: ${totalNeeded}`);
-    console.log(`- Breeding pairs: ${numBreedingPairs} (${numBreedingFish} fish)`);
-    console.log(`- Non-breeding: ${numNonBreeding}`);
-    console.log(`- Expected children: ${numChildren}`);
-    console.log(`- Final total will be: ${numBreedingFish} + ${numChildren} + ${numNonBreeding} = ${numBreedingFish + numChildren + numNonBreeding}`);
-
-    if (breedingPool.length < 2) {
-        console.error('Not enough fish to form breeding pairs - population extinct');
+    if (breedingPool.length === 0) {
+        console.error('Population extinct');
         this.is_breeding = false;
         this.setSpeed(previousSpeed);
         return;
     }
 
+    // Format data for server
     const fish_data = breedingPool.map(fish => ({
         genome: {
             color: fish.genome.color,
             speed: fish.genome.speed,
             size: fish.genome.size,
-            neural_weights: {
-                wih: fish.wih,
-                who: fish.who
-            }
-        },
-        finalEnergy: fish.isDead() ? fish.finalEnergy : fish.energy
+            neural_weights: fish.brain.weights,
+            traits: fish.traits
+        }
     }));
 
+    // Send breeding request
     fetch('/breed', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-            fish_data: fish_data
-        })
+        body: JSON.stringify({ fish_data })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) throw new Error(`Breeding server error: ${response.status}`);
+        return response.json();
+    })
     .then(newfish_data => {
-        // Take exactly the number of children we need (same as breeding parents)
-        const children = newfish_data.slice(0, numChildren);
-        this.handleBreedingResponse(children, breedingPool, nonBreedingPool, previousSpeed);
-        this.deadFish = [];
+        if (!Array.isArray(newfish_data)) {
+            throw new Error('Invalid breeding data format received');
+        }
+        this.handleBreedingResponse(newfish_data, breedingPool, nonBreedingPool, previousSpeed);
     })
     .catch(error => {
         console.error('Breeding error:', error);
@@ -662,55 +653,51 @@ triggerBreeding() {
     });
 }
 
-
-
 handleBreedingResponse(newfish_data, breedingPool, nonBreedingPool, previousSpeed) {
     try {
         this.food_items = [];
-        this.fishes = [];
-
-        // Add children with random positions
-        newfish_data.forEach(fish_data => {
-            const fish = new Fish(
-                Math.random() * this.canvas.width,
-                Math.random() * this.canvas.height,
-                fish_data.genome,
-                this.params.water_temperature,
-                this.logger
-            );
-            this.fishes.push(fish);
-        });
-
-        // Add parents back with new random positions and reset energy
-        [...breedingPool, ...nonBreedingPool].forEach(parent => {
-            parent.points.forEach(point => {
-                point.x = Math.random() * this.canvas.width;
-                point.y = Math.random() * this.canvas.height;
+        
+        if (this.params.breeding_strategy === 'keep_parents') {
+            this.fishes = [...breedingPool];
+            
+            newfish_data.forEach(fish_data => {
+                if (this.fishes.length < this.params.population_size) {
+                    const fish = new Fish(
+                        Math.random() * this.canvas.width,
+                        Math.random() * this.canvas.height,
+                        fish_data.genome,
+                        this.params.water_temperature,
+                        this.logger
+                    );
+                    this.fishes.push(fish);
+                }
             });
-            parent.energy = 100;
-            this.fishes.push(parent);
-        });
-        // Log breeding event details
-        this.logger.log('breed', 
-            `Generation ${this.generation}: Created ${newfish_data.length} children from ${breedingPool.length} parents`
-        );
-
-        breedingPool.forEach(parent => {
-            this.logger.log('breed', 
-                `Parent fish (${parent.massInGrams.toFixed(1)}g) survived with energy ${parent.energy.toFixed(1)}`
-            );
-        });
-
-        console.log(`Final population: ${this.fishes.length}`);
-        console.assert(this.fishes.length === this.params.population_size, 
-            `Population mismatch! Expected ${this.params.population_size}, got ${this.fishes.length}`);
+        } else {
+            this.fishes = [...nonBreedingPool];
+            
+            newfish_data.forEach(fish_data => {
+                if (this.fishes.length < this.params.population_size) {
+                    const fish = new Fish(
+                        Math.random() * this.canvas.width,
+                        Math.random() * this.canvas.height,
+                        fish_data.genome,
+                        this.params.water_temperature,
+                        this.logger
+                    );
+                    this.fishes.push(fish);
+                }
+            });
+        }
 
         this.generation++;
         this.stats.setGeneration(this.generation);
         this.generation_start_time = this.simulation_time;
-        this.stats.update(this.fishes);
-        this.updateOverallStats();
-        this.calculateNeuralStats();
+        
+        if (this.logger) {
+            this.logger.log('breed', 
+                `Generation ${this.generation}: ${this.fishes.length} fish`
+            );
+        }
 
     } catch (error) {
         console.error('Error handling breeding response:', error);
@@ -718,8 +705,6 @@ handleBreedingResponse(newfish_data, breedingPool, nonBreedingPool, previousSpee
         this.is_breeding = false;
         this.setSpeed(previousSpeed);
     }
-
-
 }
 
     updateOverallStats() {

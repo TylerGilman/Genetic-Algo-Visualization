@@ -7,31 +7,55 @@ class ConstrainedPoint {
         this.nextPoint = null;
         this.isHead = isHead;
         this.angle = Math.random() * Math.PI * 2;
-        this.speed = speed;
-        this.turnRate = 0.2 + (Math.random() * 0.2); // Random turn rate between 0.2 and 0.4
-        this.waveAngle = 0.4;
+        
+        // Speed parameters
+        this.baseSpeed = speed;
+        this.currentSpeed = speed;
+        this.minSpeed = speed * 0.7;
+        
+        // Swimming parameters
+        this.waveAmplitude = 0.15;
+        this.waveFrequency = 0.1;
+        this.waveAngle = Math.random() * Math.PI * 2;
+        
+        // Turn control
+        this.maxTurnRate = Math.PI / 16;
     }
 
-    move(canvas) {
+    move(canvas, neuralOutput = null) {
         if (this.isHead) {
-            this.waveAngle += 0.1;
-            const waveOffset = Math.sin(this.waveAngle) * 0.3;
+            // Head movement with neural control
+            if (neuralOutput) {
+                const turnAmount = Math.max(-this.maxTurnRate, 
+                    Math.min(this.maxTurnRate, neuralOutput.turn * this.maxTurnRate));
+                this.angle += turnAmount;
+                
+                this.currentSpeed = Math.max(
+                    this.minSpeed,
+                    this.baseSpeed * (0.7 + neuralOutput.speed * 0.3)
+                );
+            }
             
-            this.x += Math.cos(this.angle + waveOffset) * this.speed;
-            this.y += Math.sin(this.angle + waveOffset) * this.speed;
-
-            const margin = 30;
-
-            if (this.x < margin) this.angle = 0;
-            if (this.x > canvas.width - margin) this.angle = Math.PI;
-            if (this.y < margin) this.angle = Math.PI / 2;
-            if (this.y > canvas.height - margin) this.angle = -Math.PI / 2;
-
-            this.x = Math.max(5, Math.min(canvas.width - 5, this.x));
-            this.y = Math.max(5, Math.min(canvas.height - 5, this.y));
-
-            if (Math.random() < 0.02) {
-                this.angle += (Math.random() - 0.5) * Math.PI / 4;
+            // Swimming motion
+            this.waveAngle += this.waveFrequency;
+            const waveOffset = Math.sin(this.waveAngle) * this.waveAmplitude;
+            const moveAngle = this.angle + waveOffset;
+            
+            // Apply movement
+            this.x += Math.cos(moveAngle) * this.currentSpeed;
+            this.y += Math.sin(moveAngle) * this.currentSpeed;
+            
+            // Boundary handling
+            const margin = 50;
+            if (this.x < margin || this.x > canvas.width - margin ||
+                this.y < margin || this.y > canvas.height - margin) {
+                
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                this.angle = Math.atan2(centerY - this.y, centerX - this.x);
+                
+                this.x = Math.max(margin, Math.min(canvas.width - margin, this.x));
+                this.y = Math.max(margin, Math.min(canvas.height - margin, this.y));
             }
         }
     }
@@ -41,376 +65,337 @@ class ConstrainedPoint {
             const dx = this.x - this.previousPoint.x;
             const dy = this.y - this.previousPoint.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
+            
             if (distance > this.constraintRadius) {
                 const angle = Math.atan2(dy, dx);
-                this.x = this.previousPoint.x + Math.cos(angle) * this.constraintRadius;
-                this.y = this.previousPoint.y + Math.sin(angle) * this.constraintRadius;
+                const targetDist = this.constraintRadius * 0.95; // Slightly shorter to prevent stretching
+                this.x = this.previousPoint.x + Math.cos(angle) * targetDist;
+                this.y = this.previousPoint.y + Math.sin(angle) * targetDist;
             }
         }
     }
 }
 
+
 class Fish {
-constructor(x, y, genome, water_temperature, logger) {
-    this.genome = genome;
-    this.color = this.getColorFromGenome();
-    this.speed = this.getSpeedFromGenome();
-    this.size = this.getSizeFromGenome();
-    this.logger = logger;
-    
-    // Initialize neural network weights from genome if available
-    if (genome.neural_weights) {
-        this.wih = genome.neural_weights.wih;
-        this.who = genome.neural_weights.who;
-    } else {
-        this.wih = this.initializeMatrix(1, 5); // Input -> Hidden
-        this.who = this.initializeMatrix(2, 5); // Hidden -> Output
-    }
+    constructor(x, y, genome, water_temperature, logger) {
+        this.genome = genome;
+        this.color = this.getColorFromGenome();
+        this.speed = this.getSpeedFromGenome();
+        this.size = this.getSizeFromGenome();
+        this.logger = logger;
 
-        
-        // Physical properties adjusted for more realistic fish shape
-        this.constraintRadius = 3 * this.size; // Reduced for sleeker shape
-        this.numSegments = 8; // Increased segments for smoother movement
-        this.energy = 100;
-        this.metabolism = this.calculateMetabolism(water_temperature);
-        
-        // Body shape parameters
-        this.bodySizes = Array.from({ length: this.numSegments }, (_, i) => {
-            if (i === 0) return 4 * this.size; // Head slightly smaller
-            const t = i / (this.numSegments - 1);
-            return 3.5 * this.size * (1 - Math.pow(t, 0.8)); // More gradual taper
-        });
-        
-        // Initialize points for fish body
-        this.points = Array.from({ length: this.numSegments }, (_, i) =>
-            new ConstrainedPoint(x + i * this.constraintRadius, y, this.constraintRadius, this.speed, i === 0)
-        );
-        
-        // Connect points
-        for (let i = 1; i < this.points.length; i++) {
-            this.points[i].previousPoint = this.points[i - 1];
-            this.points[i - 1].nextPoint = this.points[i];
-        }
-
-        // Convert genome size (0-1) to realistic fish mass in grams
-        // Small fish ~1g to large fish ~1000g using exponential scaling
-        this.massInGrams = Math.exp(genome.size * Math.log(1000)); // 1g to 1000g
-        
-        // Scale visual size based on mass (cube root for linear dimensions)
-        this.visualScale = Math.pow(this.massInGrams / 1000, 1/3) * 3; // Scale 3 is max visual size
-        
+        // Physical properties
+        this.massInGrams = Math.exp(genome.size * Math.log(1000));
+        this.visualScale = Math.pow(this.massInGrams / 1000, 1/3) * 3;
         this.constraintRadius = 3 * this.visualScale;
         this.numSegments = 8;
-        this.predatorRange = 100; // Detection range for predators/prey
-        this.canEatRatio = 1/4;  // Can eat fish 1/5 or smaller
+        this.energy = 100;
+        this.metabolism = this.calculateMetabolism(water_temperature);
+        this.canEatRatio = 1/4;
 
-        // Initialize neural network
-        this.network = {
-            forward: function(inputs) {
-                const hidden = new Array(5).fill(0);
-                // Process input layer to hidden layer
-                for (let i = 0; i < hidden.length; i++) {
-                    for (let j = 0; j < inputs.length; j++) {
-                        hidden[i] += (this.wih[i] || [])[j] || 0 * inputs[j];
-                    }
-                    hidden[i] = Math.tanh(hidden[i]);
-                }
+        // Enhanced traits
+        this.traits = {
+            aggressiveness: Math.random(),
+            cautiousness: Math.random(),
+            foodMotivation: Math.random(),
+            energyEfficiency: Math.random(),
+            learningRate: Math.random(),
+            adaptability: Math.random()
+        };
 
-                // Process hidden layer to output layer
-                const outputs = new Array(2).fill(0);
-                for (let i = 0; i < outputs.length; i++) {
-                    for (let j = 0; j < hidden.length; j++) {
-                        outputs[i] += (this.who[i] || [])[j] || 0 * hidden[j];
-                    }
-                    outputs[i] = Math.tanh(outputs[i]);
-                }
-                return outputs;
+        // Neural network
+        this.brain = this.initializeBrain();
+
+        // Initialize segments with sizes
+        this.bodySizes = new Float32Array(this.numSegments);
+        for(let i = 0; i < this.numSegments; i++) {
+            this.bodySizes[i] = i === 0 ? 
+                4 * this.visualScale : 
+                3.5 * this.visualScale * (1 - Math.pow(i / (this.numSegments - 1), 0.8));
+        }
+
+        // Points initialization
+        this.points = [];
+        let prevPoint = null;
+        for(let i = 0; i < this.numSegments; i++) {
+            const point = new ConstrainedPoint(
+                x + i * this.constraintRadius,
+                y,
+                this.constraintRadius,
+                this.speed,
+                i === 0
+            );
+            if(prevPoint) {
+                point.previousPoint = prevPoint;
+                prevPoint.nextPoint = point;
+            }
+            this.points.push(point);
+            prevPoint = point;
+        }
+
+        if(this.logger) {
+            this.logger.log('spawn', `Fish spawned (${this.massInGrams.toFixed(1)}g)`);
+        }
+    }
+
+    initializeBrain() {
+        return {
+            inputSize: 10,
+            hiddenSize: 12,
+            outputSize: 2,
+            weights: {
+                hidden: new Float32Array(10 * 12).map(() => 
+                    (Math.random() * 2 - 1) * this.traits.cautiousness
+                ),
+                output: new Float32Array(12 * 2).map(() => 
+                    (Math.random() * 2 - 1) * this.traits.aggressiveness
+                )
             },
-            wih: genome.neural_weights?.wih || this.initializeMatrix(5, 6),  // 6 inputs, 5 hidden
-            who: genome.neural_weights?.who || this.initializeMatrix(2, 5)   // 5 hidden, 2 outputs
+            bias: {
+                hidden: new Float32Array(12).fill(0).map(() => 
+                    this.traits.adaptability - 0.5
+                ),
+                output: new Float32Array(2).fill(0).map(() => 
+                    this.traits.foodMotivation - 0.5
+                )
+            }
         };
     }
 
-    // Neural network initialization
-    initializeMatrix(rows, cols) {
-        return Array.from({ length: rows }, () =>
-            Array.from({ length: cols }, () => (Math.random() * 2) - 1)
-        );
+    think(foodItems, otherFish, canvas) {
+        const head = this.points[0];
+        const inputs = new Float32Array(10);
+        
+        // Environment inputs
+        const [nearestFood, foodDist] = this.findNearest(head, foodItems);
+        const [nearestFish, fishDist, isPredator] = this.findNearestFish(head, otherFish);
+        
+        if (nearestFood) {
+            inputs[0] = this.getAngleDiff(head, nearestFood) / Math.PI;
+            inputs[1] = Math.min(1, foodDist / 100);
+        }
+        
+        if (nearestFish) {
+            inputs[2] = this.getAngleDiff(head, nearestFish.points[0]) / Math.PI;
+            inputs[3] = Math.min(1, fishDist / 100);
+            inputs[4] = isPredator ? 1 : -1;
+        }
+        
+        // State inputs
+        inputs[5] = this.energy / 100;
+        inputs[6] = head.currentSpeed / this.speed;
+        
+        // Trait inputs
+        inputs[7] = this.traits.aggressiveness;
+        inputs[8] = this.traits.cautiousness;
+        inputs[9] = this.traits.foodMotivation;
+
+        return this.neuralForward(inputs);
     }
 
+    eat(foodItems, otherFish) {
+        const head = this.points[0];
+        const eatDistance = 5 * this.visualScale;
+        
+        // Try to eat other fish
+        for (let i = otherFish.length - 1; i >= 0; i--) {
+            const prey = otherFish[i];
+            if (prey === this || !this.canEat(prey)) continue;
+            
+            const dist = Math.hypot(
+                prey.points[0].x - head.x,
+                prey.points[0].y - head.y
+            );
+            
+            if (dist < eatDistance) {
+                const energyGain = 50 * (prey.massInGrams / this.massInGrams);
+                this.energy = Math.min(this.energy + energyGain, 100);
+                prey.energy = -1;
+                
+                if (this.logger) {
+                    this.logger.log('eat', 
+                        `Fish (${this.massInGrams.toFixed(1)}g) ate fish (${prey.massInGrams.toFixed(1)}g)`
+                    );
+                }
+                return true;
+            }
+        }
+        
+        // Try to eat food
+        for (let i = foodItems.length - 1; i >= 0; i--) {
+            const food = foodItems[i];
+            const dist = Math.hypot(food.x - head.x, food.y - head.y);
+            
+            if (dist < eatDistance) {
+                const energyGain = 30 / (this.massInGrams / 100);
+                this.energy = Math.min(this.energy + energyGain, 100);
+                foodItems.splice(i, 1);
+                
+                if (this.logger) {
+                    this.logger.log('eat', 
+                        `Fish (${this.massInGrams.toFixed(1)}g) ate food`
+                    );
+                }
+                return true;
+            }
+        }
+        return false;
+    }
 
     isDead() {
-      return this.energy <= 0;
-  }
-
-    get finalEnergy() {
-        return this._finalEnergy || this.energy;
+        if (this.energy <= 0 && this.logger) {
+            this.logger.log('death', 
+                `Fish (${this.massInGrams.toFixed(1)}g) died`
+            );
+        }
+        return this.energy <= 0;
     }
 
-    set finalEnergy(value) {
-        this._finalEnergy = value;
-    }
-
-    // Neural network forward pass
-    think(nearestFood, otherFish) {
-        const dx = nearestFood.x - this.points[0].x;
-        const dy = nearestFood.y - this.points[0].y;
-        const foodDistance = Math.hypot(dx, dy);
-        const foodAngle = Math.atan2(dy, dx);
+    neuralForward(inputs) {
+        const hidden = new Float32Array(12);
+        const output = new Float32Array(2);
         
-        // Find nearest predator and prey
-        let nearestPredator = null;
-        let nearestPrey = null;
-        let minPredatorDist = this.predatorRange;
-        let minPreyDist = this.predatorRange;
-
-        otherFish.forEach(other => {
-            if (other === this) return;
-            
-            const fishDx = other.points[0].x - this.points[0].x;
-            const fishDy = other.points[0].y - this.points[0].y;
-            const distance = Math.hypot(fishDx, fishDy);
-            
-            if (distance > this.predatorRange) return;
-
-            // Check if other fish can eat us
-            if (this.size <= other.size * other.canEatRatio) {
-                if (distance < minPredatorDist) {
-                    minPredatorDist = distance;
-                    nearestPredator = other;
-                }
+        // Hidden layer with SIMD-like batching
+        for(let i = 0; i < 12; i += 4) {
+            for(let j = 0; j < 7; j++) {
+                const input = inputs[j];
+                hidden[i] += input * this.brain.weights.hidden[i * 7 + j];
+                hidden[i+1] += input * this.brain.weights.hidden[(i+1) * 7 + j];
+                hidden[i+2] += input * this.brain.weights.hidden[(i+2) * 7 + j];
+                hidden[i+3] += input * this.brain.weights.hidden[(i+3) * 7 + j];
             }
-            
-            // Check if we can eat other fish
-            if (other.size <= this.size * this.canEatRatio) {
-                if (distance < minPreyDist) {
-                    minPreyDist = distance;
-                    nearestPrey = other;
-                }
+        }
+        
+        // Activation
+        for(let i = 0; i < 12; i++) {
+            hidden[i] = Math.tanh(hidden[i]);
+        }
+        
+        // Output layer
+        for(let i = 0; i < 2; i++) {
+            for(let j = 0; j < 12; j++) {
+                output[i] += hidden[j] * this.brain.weights.output[i * 12 + j];
             }
-        });
-
-        // Calculate normalized inputs for neural network
-        const currentAngle = Math.atan2(
-            this.points[1].y - this.points[0].y,
-            this.points[1].x - this.points[0].x
-        );
-
-        // Prepare inputs
-        const inputs = [
-            // Food angle [-1, 1]
-            ((foodAngle - currentAngle + Math.PI) % (2 * Math.PI) - Math.PI) / Math.PI,
-            // Food distance [0, 1]
-            Math.min(1, foodDistance / this.predatorRange),
-        ];
-
-        if (nearestPredator) {
-            const predatorDx = nearestPredator.points[0].x - this.points[0].x;
-            const predatorDy = nearestPredator.points[0].y - this.points[0].y;
-            const predatorAngle = Math.atan2(predatorDy, predatorDx);
-            
-            inputs.push(
-                // Predator angle [-1, 1]
-                ((predatorAngle - currentAngle + Math.PI) % (2 * Math.PI) - Math.PI) / Math.PI,
-                // Predator distance [0, 1]
-                Math.min(1, minPredatorDist / this.predatorRange)
-            );
-        } else {
-            inputs.push(0, 1); // No predator
+            output[i] = Math.tanh(output[i]);
         }
-
-        if (nearestPrey) {
-            const preyDx = nearestPrey.points[0].x - this.points[0].x;
-            const preyDy = nearestPrey.points[0].y - this.points[0].y;
-            const preyAngle = Math.atan2(preyDy, preyDx);
-            
-            inputs.push(
-                // Prey angle [-1, 1]
-                ((preyAngle - currentAngle + Math.PI) % (2 * Math.PI) - Math.PI) / Math.PI,
-                // Prey distance [0, 1]
-                Math.min(1, minPreyDist / this.predatorRange)
-            );
-        } else {
-            inputs.push(0, 1); // No prey
-        }
-
-        // Get neural network response
-        const output = this.network.forward(inputs);
         
         return {
             turn: output[0],
-            speed: output[1]
+            speed: (output[1] + 1) / 2
         };
     }
 
-update(canvas, foodItems, otherFish, water_temperature, logger) {
-    if (this.isDead()) {
-        this.metabolism = this.calculateMetabolism(water_temperature);
-        this.energy -= this.metabolism;
-        return;
-    }
+    update(canvas, foodItems, otherFish, water_temperature) {
+        const now = performance.now();
+        if (now - this.lastUpdate < this.updateInterval || this.isDead()) return;
+        this.lastUpdate = now;
 
-    let nearestFood = null;
-    let minDist = Infinity;
-    
-    for (const food of foodItems) {
-        const dist = Math.hypot(food.x - this.points[0].x, food.y - this.points[0].y);
-        if (dist < minDist) {
-            minDist = dist;
-            nearestFood = food;
+        // Movement validation
+        if (now - this.lastPositionCheck > this.positionCheckInterval) {
+            this.validateMovement();
+            this.lastPositionCheck = now;
         }
-    }
-    
-    if (nearestFood) {
-        const response = this.think(nearestFood, otherFish);
+
+        const decision = this.think(foodItems, otherFish, canvas);
         
-        if (this.points[0].isHead) {
-            this.points[0].angle += response.turn * 0.1;
-            this.points[0].speed = Math.max(0.1, Math.min(this.speed, 
-                this.points[0].speed + response.speed * 0.1));
+        // Update all points
+        for (const point of this.points) {
+            if (point.isHead) {
+                point.move(canvas, decision);
+            }
+            point.constrain();
         }
+
+        // Apply metabolic effects
+        this.metabolism = this.calculateMetabolism(water_temperature) * 
+                         (1 - this.traits.energyEfficiency * 0.2);
+        this.energy = Math.max(-100, this.energy - this.metabolism);
         
         this.eat(foodItems, otherFish);
     }
 
-    this.metabolism = this.calculateMetabolism(water_temperature)
-    const energyLoss = this.metabolism * (0.5 + this.points[0].speed / this.speed);
-    // Penalty for not moving.
-    this.energy = Math.max(-100, this.energy - energyLoss);
-    
-    for (const point of this.points) {
-        point.move(canvas);
-        point.constrain();
-    }
-}
+    validateMovement() {
+        const head = this.points[0];
+        this.lastPositions[this.positionIndex] = head.x;
+        this.lastPositions[this.positionIndex + 1] = head.y;
+        this.positionIndex = (this.positionIndex + 2) % 6;
 
-    // Modified eat method to scale energy gain with size
-eat(foodItems, otherFish) {
-    const headX = this.points[0].x;
-    const headY = this.points[0].y;
-    const eatDistance = 10 * this.visualScale;
+        if (this.positionIndex === 0) {
+            let totalDist = 0;
+            for(let i = 2; i < 6; i += 2) {
+                const dx = this.lastPositions[i] - this.lastPositions[i-2];
+                const dy = this.lastPositions[i+1] - this.lastPositions[i-1];
+                totalDist += Math.hypot(dx, dy);
+            }
 
-    // Try to eat other fish first
-    for (let i = otherFish.length - 1; i >= 0; i--) {
-        const prey = otherFish[i];
-        if (prey === this) continue;
-        
-        // Check mass ratio for predation
-        if (prey.massInGrams <= this.massInGrams * this.canEatRatio) {
-            const distance = Math.sqrt(
-                (prey.points[0].x - headX) ** 2 + 
-                (prey.points[0].y - headY) ** 2
-            );
-            
-            if (distance < eatDistance) {
-                // Energy gain proportional to prey mass
-                const energyGain = 50 * (prey.massInGrams / this.massInGrams);
-                this.energy = Math.min(this.energy + energyGain, 100);
-                prey.energy = -1;
-                console.log("test")
-                // Log the predation event
- 
-                this.logger.log('eat', 
-                    `Fish (${this.massInGrams.toFixed(1)}g) ate fish (${prey.massInGrams.toFixed(1)}g)`
-                );
-                return true;
+            if (totalDist < this.minMoveDist) {
+                head.x += Math.cos(head.angle) * this.speed;
+                head.y += Math.sin(head.angle) * this.speed;
+                this.energy -= 5;
             }
         }
     }
 
-    // Then try regular food
-    for (let i = foodItems.length - 1; i >= 0; i--) {
-        const food = foodItems[i];
-        const distance = Math.sqrt((food.x - headX) ** 2 + (food.y - headY) ** 2);
-        if (distance < eatDistance) {
-            const energyGain = 30 / (this.massInGrams / 100);  // Scale energy gain inversely with mass
-            this.energy = Math.min(this.energy + energyGain, 100);
-            foodItems.splice(i, 1);
-            
-            this.logger.log('eat', 
-                `Fish (${this.massInGrams.toFixed(1)}g) ate food`
-            );
-            return true;
-        }
-    }
-    return false;
-}
 
     canEat(otherFish) {
         return otherFish.massInGrams <= this.massInGrams * this.canEatRatio;
     }
 
-calculateMetabolism(water_temperature) {
-    // Temperature constraints
-    const temp = Math.max(-2, Math.min(35, water_temperature));
-    
-    // Use actual mass for metabolic calculations
-    // Standard metabolic rate in fish: ~0.14 * M^0.75 (watts)
-    const basalMetabolicRate = 0.14 * Math.pow(this.massInGrams/1000, 0.75);
-        // Modified activity cost to be less punishing for large fish
-    const maxSpeedMultiplier = 1.5;
-    const normalizedSpeed = this.speed / 5;
-    // Add size compensation to speed cost
-    const activityMultiplier = 1 + (maxSpeedMultiplier - 1) * Math.pow(normalizedSpeed, 2) * Math.pow(this.size, -0.2);
-
-    // Temperature effects
-    const Q10 = 2.3;
-    // Adjusted optimal temperature range
-    const optimalTemp = 15 + (1 - this.size) * 8;  // Reduced range from 10 to 8
-    
-    const thermalWindow = 10 + (this.size * 2);  // Larger fish have slightly wider thermal tolerance
-    const tempDiff = Math.abs(temp - optimalTemp);
-    let tempEffect;
-
-    if (tempDiff <= thermalWindow / 2) {
-        tempEffect = Math.pow(Q10, (temp - optimalTemp) / 10);
-    } else {
-        const outsideOptimalRange = tempDiff - (thermalWindow / 2);
-        // Larger fish handle temperature stress better
-        const efficiencyLoss = Math.exp(-outsideOptimalRange / (5 + this.size * 2));
-        tempEffect = Math.pow(Q10, (temp - optimalTemp) / 10) * efficiencyLoss;
+    calculateMetabolism(water_temperature) {
+        const temp = Math.max(-2, Math.min(35, water_temperature));
+        
+        // Base metabolic rate using mass
+        const basalRate = 0.14 * Math.pow(this.massInGrams/1000, 0.75);
+        
+        // Activity cost with size compensation
+        const speedMultiplier = 1 + (0.5 * Math.pow(this.speed/5, 2) * Math.pow(this.size, -0.2));
+        
+        // Temperature effects
+        const Q10 = 2.3;
+        const optimalTemp = 15 + (1 - this.size) * 8;
+        const thermalWindow = 10 + (this.size * 2);
+        const tempDiff = Math.abs(temp - optimalTemp);
+        
+        let tempEffect;
+        if (tempDiff <= thermalWindow / 2) {
+            tempEffect = Math.pow(Q10, (temp - optimalTemp) / 10);
+        } else {
+            const outsideRange = tempDiff - (thermalWindow / 2);
+            const efficiencyLoss = Math.exp(-outsideRange / (5 + this.size * 2));
+            tempEffect = Math.pow(Q10, (temp - optimalTemp) / 10) * efficiencyLoss;
+        }
+        
+        // Combine all effects
+        let metabolism = basalRate * speedMultiplier * tempEffect * Math.pow(this.size, -0.15);
+        
+        // Size-based efficiency bonus
+        const efficiencyBonus = 1 - (this.size * 0.2);
+        metabolism *= efficiencyBonus;
+        
+        // Ensure minimum metabolism
+        const minMetabolism = basalRate * (0.1 - this.size * 0.02);
+        
+        return Number(Math.max(metabolism, minMetabolism).toFixed(4));
     }
-
-    // Modified temperature stress effects
-    if (temp < 0) {
-        // Larger fish handle cold better
-        const coldResistance = 0.2 + (this.size * 0.3);  // Added size benefit
-        tempEffect *= coldResistance + (1 - coldResistance) * (temp + 2) / 2;
-    } else if (temp > 30) {
-        // Larger fish handle heat stress better too
-        const heatResistance = Math.min(1, this.size * 0.5);
-        const heatStress = ((temp - 30) / 5) * (1 - heatResistance);
-        tempEffect *= Math.exp(-heatStress);
-    }
-
-    // Reduced surface area effect for better size scaling
-    const surfaceAreaEffect = Math.pow(this.size, -0.15);  // Changed from -0.25 to -0.15
-
-    // Combined metabolism with size-based efficiency bonus
-    let metabolism = basalMetabolicRate * activityMultiplier * tempEffect * surfaceAreaEffect;
-    
-    // Size-based efficiency bonus
-    const efficiencyBonus = 1 - (this.size * 0.2);  // Large fish are up to 20% more efficient
-    metabolism *= efficiencyBonus;
-
-    // Adjusted minimum metabolism
-    const minMetabolism = basalMetabolicRate * (0.1 - this.size * 0.02);  // Larger fish have lower minimum
-    
-    return Number(Math.max(metabolism, minMetabolism).toFixed(4));
-}
 
     getColorFromGenome() {
         return `hsl(${this.genome.color * 360}, 80%, 50%)`;
     }
 
     getSpeedFromGenome() {
-        return this.genome.speed * 5;  // Speed 0-5
+        return this.genome.speed * 5;
     }
 
     getSizeFromGenome() {
-        return this.genome.size * 2 + 1;  // Size 1-3
+        return this.genome.size * 2 + 1;
     }
 
+    calculateFitness() {
+        const energyFitness = this.energy;
+        const efficiencyFitness = (this.energy / this.metabolism) * 10;
+        return Number((energyFitness + efficiencyFitness) / 2);
+    }
 
     getStats() {
         return {
@@ -422,23 +407,49 @@ calculateMetabolism(water_temperature) {
         };
     }
 
-    calculateFitness() {
-        // Consider both current energy and efficiency
-        const energyFitness = this.energy;
-        const efficiencyFitness = (this.energy / this.metabolism) * 10;
-        return Number((energyFitness + efficiencyFitness) / 2);
+    findNearest(head, items) {
+        let minDist = Infinity;
+        let nearest = null;
+        
+        for(const item of items) {
+            const dist = Math.hypot(item.x - head.x, item.y - head.y);
+            if(dist < minDist) {
+                minDist = dist;
+                nearest = item;
+            }
+        }
+        
+        return [nearest, minDist];
     }
 
-    limitJointAngle(p1, p2, p3) {
-        const angle1 = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-        const angle2 = Math.atan2(p3.y - p2.y, p3.x - p2.x);
-        let angleDiff = (angle2 - angle1 + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
-
-        if (Math.abs(angleDiff) > this.maxBendAngle) {
-            const newAngle = angle1 + this.maxBendAngle * Math.sign(angleDiff);
-            p3.x = p2.x + Math.cos(newAngle) * this.constraintRadius;
-            p3.y = p2.y + Math.sin(newAngle) * this.constraintRadius;
+    findNearestFish(head, otherFish) {
+        let minDist = Infinity;
+        let nearest = null;
+        let isPredator = false;
+        
+        for(const fish of otherFish) {
+            if(fish === this) continue;
+            
+            const dist = Math.hypot(
+                fish.points[0].x - head.x,
+                fish.points[0].y - head.y
+            );
+            
+            if(dist < minDist) {
+                minDist = dist;
+                nearest = fish;
+                isPredator = fish.massInGrams > this.massInGrams / this.canEatRatio;
+            }
         }
+        
+        return [nearest, minDist, isPredator];
+    }
+
+    getAngleDiff(head, target) {
+        const targetX = target.x || target.points[0].x;
+        const targetY = target.y || target.points[0].y;
+        const angle = Math.atan2(targetY - head.y, targetX - head.x);
+        return ((angle - head.angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
     }
 
     draw(ctx) {
@@ -455,8 +466,9 @@ calculateMetabolism(water_temperature) {
         ctx.stroke(finPath);
     }
 
-    getOuterContour() {
+getOuterContour() {
         const path = new Path2D();
+        
         const getOuterPoint = (t, side) => {
             const index = Math.min(Math.floor(t * (this.points.length - 1)), this.points.length - 2);
             const localT = (t * (this.points.length - 1)) % 1;
@@ -501,8 +513,8 @@ calculateMetabolism(water_temperature) {
 
     drawFins(finPointIndex) {
         const finPath = new Path2D();
-        const finLength = 6;
-        const finWidth = 1.5;
+        const finLength = 6 * this.visualScale;
+        const finWidth = 1.5 * this.visualScale;
         const finAngle = Math.PI / 6;
 
         const finShape = (t, foldFactor) => {
@@ -531,6 +543,7 @@ calculateMetabolism(water_temperature) {
         const rightFoldFactor = 1 - Math.max(0, Math.min(1, turnAngle / (Math.PI / 4)));
         const leftFoldFactor = 1 + Math.max(0, Math.min(1, turnAngle / (Math.PI / 4)));
 
+        // Draw right fin
         finPath.moveTo(rightFinBase.x, rightFinBase.y);
         for (let t = 0; t <= 1; t += 0.1) {
             const point = finShape(t, rightFoldFactor);
@@ -540,6 +553,7 @@ calculateMetabolism(water_temperature) {
         }
         finPath.lineTo(rightFinBase.x, rightFinBase.y);
 
+        // Draw left fin
         finPath.moveTo(leftFinBase.x, leftFinBase.y);
         for (let t = 0; t <= 1; t += 0.1) {
             const point = finShape(t, leftFoldFactor);
@@ -552,3 +566,4 @@ calculateMetabolism(water_temperature) {
         return finPath;
     }
 }
+
