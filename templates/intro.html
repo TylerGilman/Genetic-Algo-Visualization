@@ -1,0 +1,344 @@
+{# templates/intro.html #}
+<div class="educational-wrapper">
+    <nav class="custom-navbar">
+        <div class="container">
+            <span class="navbar-brand">🧬 Neural Network Fish Evolution Simulator</span>
+        </div>
+    </nav>
+
+    <div class="hero-section">
+        <div class="container">
+            <h1 class="display-4">Deep Dive into Fish Evolution</h1>
+            <p class="lead">Explore how neural networks and genetic algorithms combine to create intelligent, adaptive fish behaviors.</p>
+            <p class="authors">Created by Tyler Gilman & Nia Quinn</p>
+        </div>
+    </div>
+
+    <div class="container content-section">
+        <!-- Fish Anatomy Section -->
+        <div class="section-card mb-5">
+            <h2>Fish Anatomy & Physics 🔬</h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="anatomy-details">
+                        <h4>Physical Structure</h4>
+                        <ul>
+                            <li><strong>Body Segments:</strong> 8 connected points with physics-based constraints</li>
+                            <li><strong>Dynamic Sizing:</strong> Mass calculated exponentially from genetic size trait</li>
+                            <li><strong>Swimming Motion:</strong> Sinusoidal wave propagation through body segments</li>
+                            <li><strong>Fins:</strong> Responsive to turning motion with realistic folding behavior</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="physics-details">
+                        <h4>Movement Physics</h4>
+                        <ul>
+                            <li><strong>Speed Control:</strong> Neural network output affects swimming velocity</li>
+                            <li><strong>Turn Rate:</strong> Limited by maximum turn angle (π/16 radians)</li>
+                            <li><strong>Constraint System:</strong> Maintains realistic body segment spacing</li>
+                            <li><strong>Boundary Handling:</strong> Smart edge avoidance behavior</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Neural Network Section -->
+        <div class="section-card mb-5">
+            <h2>Neural Network Brain 🧠</h2>
+            <div class="network-structure">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="network-layer">
+                            <h4>Input Layer (10 neurons)</h4>
+                            <div class="neuron-list">
+                                <div class="neuron-item">
+                                    <span class="neuron-icon">📍</span>
+                                    <span>Nearest food angle & distance</span>
+                                </div>
+                                <div class="neuron-item">
+                                    <span class="neuron-icon">🐟</span>
+                                    <span>Nearest fish angle & distance</span>
+                                </div>
+                                <div class="neuron-item">
+                                    <span class="neuron-icon">⚠️</span>
+                                    <span>Predator detection</span>
+                                </div>
+                                <div class="neuron-item">
+                                    <span class="neuron-icon">⚡</span>
+                                    <span>Current energy level</span>
+                                </div>
+                                <div class="neuron-item">
+                                    <span class="neuron-icon">🏃</span>
+                                    <span>Current speed</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="network-layer">
+                            <h4>Hidden Layer (12 neurons)</h4>
+                            <p>Uses hyperbolic tangent activation with adaptive bias based on personality traits</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="network-layer">
+                            <h4>Output Layer (2 neurons)</h4>
+                            <div class="neuron-list">
+                                <div class="neuron-item">
+                                    <span class="neuron-icon">↪️</span>
+                                    <span>Turn amount (-π/16 to π/16)</span>
+                                </div>
+                                <div class="neuron-item">
+                                    <span class="neuron-icon">⏩</span>
+                                    <span>Speed multiplier (0.7x to 1.3x)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Genetic Traits Section -->
+        <div class="section-card mb-5">
+            <h2>Genetic Traits & Personality 🧬</h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="traits-card">
+                        <h4>Physical Traits</h4>
+                        <div class="trait-details">
+                            <div class="trait-item">
+                                <span class="trait-name">Color (HSL)</span>
+                                <div class="trait-desc">Determines fish appearance, encoded as 0-360° hue value</div>
+                            </div>
+                            <div class="trait-item">
+                                <span class="trait-name">Size</span>
+                                <div class="trait-desc">Affects mass, visual scale, and predator/prey relationships</div>
+                            </div>
+                            <div class="trait-item">
+                                <span class="trait-name">Base Speed</span>
+                                <div class="trait-desc">Maximum velocity, scaled by neural network output</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="traits-card">
+                        <h4>Personality Traits</h4>
+                        <div class="trait-details">
+                            <div class="trait-item">
+                                <span class="trait-name">Aggressiveness</span>
+                                <div class="trait-desc">Influences predatory behavior and risk-taking</div>
+                            </div>
+                            <div class="trait-item">
+                                <span class="trait-name">Cautiousness</span>
+                                <div class="trait-desc">Affects escape responses and neural weight initialization</div>
+                            </div>
+                            <div class="trait-item">
+                                <span class="trait-name">Food Motivation</span>
+                                <div class="trait-desc">Impacts foraging behavior and energy management</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metabolism System -->
+        <div class="section-card mb-5">
+            <h2>Advanced Metabolism System 🔥</h2>
+            <div class="metabolism-details">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h4>Energy Consumption Factors</h4>
+                        <ul>
+                            <li><strong>Base Rate:</strong> 0.14 * (mass/1000)^0.75</li>
+                            <li><strong>Activity Cost:</strong> Increases with speed and size</li>
+                            <li><strong>Temperature Effect:</strong> Q10 principle with thermal windows</li>
+                            <li><strong>Size Efficiency:</strong> Larger fish have better metabolic efficiency</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="temp-chart">
+                            <h4>Temperature Response</h4>
+                            <ul>
+                                <li>Optimal temp: 15°C + size adjustment</li>
+                                <li>Thermal window: 10°C + size bonus</li>
+                                <li>Q10 factor: 2.3</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Evolution Process -->
+        <div class="section-card">
+            <h2>Breeding & Evolution System 🔄</h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="breeding-details">
+                        <h4>Selection Process</h4>
+                        <ul>
+                            <li>Top 50% of fish selected based on fitness</li>
+                            <li>Fitness = Energy level + Metabolic efficiency</li>
+                            <li>Parents paired randomly from breeding pool</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mutation-details">
+                        <h4>Genetic Operations</h4>
+                        <ul>
+                            <li>Crossover of neural weights with random split point</li>
+                            <li>Trait mutation with Gaussian distribution</li>
+                            <li>Neural weight mutation scaled by personality traits</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.educational-wrapper {
+    font-family: 'Nunito', sans-serif;
+    background-color: #f0f7ff;
+    padding-bottom: 3rem;
+}
+
+.custom-navbar {
+    background: #1a237e;
+    padding: 1rem 0;
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.hero-section {
+    background: linear-gradient(135deg, #1a237e, #3949ab);
+    color: white;
+    padding: 4rem 0;
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.section-card {
+    background: white;
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 15px rgba(26, 35, 126, 0.1);
+}
+
+.section-card h2 {
+    color: #1a237e;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e8eaf6;
+}
+
+.network-layer, .traits-card {
+    background: #e8eaf6;
+    padding: 1.5rem;
+    border-radius: 10px;
+    height: 100%;
+}
+
+.neuron-list {
+    margin-top: 1rem;
+}
+
+.neuron-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+}
+
+.neuron-icon {
+    margin-right: 0.5rem;
+    font-size: 1.2rem;
+}
+
+.trait-item {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.trait-name {
+    font-weight: 700;
+    color: #1a237e;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.trait-desc {
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.anatomy-details, .physics-details, .breeding-details, .mutation-details {
+    background: #e8eaf6;
+    padding: 1.5rem;
+    border-radius: 10px;
+    height: 100%;
+}
+
+ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+ul li {
+    margin-bottom: 0.8rem;
+    padding-left: 1.5rem;
+    position: relative;
+}
+
+ul li:before {
+    content: '•';
+    color: #1a237e;
+    font-weight: bold;
+    position: absolute;
+    left: 0;
+}
+
+.network-structure {
+    background: #f5f5f5;
+    padding: 1.5rem;
+    border-radius: 10px;
+}
+
+.metabolism-details {
+    background: #e8eaf6;
+    padding: 1.5rem;
+    border-radius: 10px;
+}
+
+.temp-chart {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+}
+
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 2rem 0;
+    }
+    
+    .section-card {
+        padding: 1.5rem;
+    }
+    
+    .network-layer, .traits-card {
+        margin-bottom: 1rem;
+    }
+}
+</style>

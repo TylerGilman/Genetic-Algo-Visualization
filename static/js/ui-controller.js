@@ -444,70 +444,21 @@ class UIController extends SimulationComponent {
         }
     }
 
-    updateStatsDisplay(stats) {
-        if (this.statsElement) {
-            // Clear existing stats content to prevent duplication
-            this.statsElement.innerHTML = '';
-        }
-        if (!stats || typeof stats !== 'object') {
-            console.error('Invalid stats object');
-            return;
-        }
-
-        try {
-            let html = `
-                <div class="stats-section">
-                    <p>Population: ${stats.population_size || 0}</p>
-                    <p>Food Available: ${stats.food_count || 0}</p>
-                    <p>Water Temperature: ${(stats.water_temperature || 0).toFixed(1)}°C</p>
-                    <p>Simulation Speed: ${(stats.simulation_speed || 0).toFixed(1)}x</p>
-                </div>
-            `;
-
-            if (stats.fish_stats && stats.fish_stats.length > 0) {
-                html += `
-                    <table class="stats-table">
-                        <thead>
-                            <tr>
-                                <th>Color</th>
-                                <th>Speed</th>
-                                <th>Size</th>
-                                <th>Energy</th>
-                                <th>Metabolism</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-
-                stats.fish_stats.forEach(fish => {
-                    if (fish) {
-                        html += `
-                            <tr>
-                                <td><div style="width: 20px; height: 20px; background-color: ${fish.color || '#000'};"></div></td>
-                                <td>${fish.speed || '0'}</td>
-                                <td>${fish.size || '0'}</td>
-                                <td>${fish.energy || '0'}</td>
-                                <td>${fish.metabolism || '0'}</td>
-                            </tr>
-                        `;
-                    }
-                });
-
-                html += `
-                        </tbody>
-                    </table>
-                `;
-            } else {
-                html += '<p>No fish data available</p>';
-            }
-
-            if (this.statsElement) {
-                this.statsElement.innerHTML = html;
-            }
-        } catch (error) {
-            console.error("Error updating stats display:", error);
-        }
+updateStatsDisplay(stats) {
+    if (!stats || typeof stats !== 'object') {
+        console.error('Invalid stats object');
+        return;
     }
+    try {
+        // Update summary stats
+        document.getElementById('population-stat').textContent = `${stats.population_size}`;
+        document.getElementById('food-stat').textContent = `${stats.food_count}`;
+        document.getElementById('temperature-stat').textContent = `${stats.water_temperature.toFixed(1)}°C`;
+        document.getElementById('speed-stat').textContent = `${stats.simulation_speed.toFixed(1)}x`;
+    } catch (error) {
+        console.error("Error updating stats display:", error);
+    }
+}
 
     resizeSimulationContainer() {
         try {

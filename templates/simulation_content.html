@@ -74,40 +74,53 @@
     </div>
 
 
-    <!-- Current Stats Display -->
-    <div class="stats-overview">
-        <div id="simulation-timer" class="timer">Elapsed Time: 00:00:00</div>
-        <div id="stats-container"></div>
-        <div id="stats" class="stats-display"></div>
+<div id="stats" class="stats-overview">
+    <div class="stats-group">
+        <div class="stat-item">
+            <label>Population:</label>
+            <span id="population-stat" class="numerical-value">-</span>
+        </div>
+        <div class="stat-item">
+            <label>Food Available:</label>
+            <span id="food-stat" class="numerical-value">-</span>
+        </div>
+        <div class="stat-item">
+            <label>Temperature:</label>
+            <span id="temperature-stat" class="numerical-value">-</span>
+        </div>
+        <div class="stat-item">
+            <label>Simulation Speed:</label>
+            <span id="speed-stat" class="numerical-value">-</span>
+        </div>
     </div>
+</div>
 
-    <!-- Performance Metrics -->
-    <div class="metrics-grid">
-        <div class="metric-card">
-            <h4>Size Distribution</h4>
-            <div class="chart-container">
-                <canvas id="sizeChart"></canvas>
-            </div>
+<!-- Charts Grid -->
+<div class="metrics-grid">
+    <div class="metric-card">
+        <h4>Size Distribution</h4>
+        <div class="chart-container">
+            <canvas id="sizeChart"></canvas>
         </div>
-        <div class="metric-card">
-            <h4>Speed Distribution</h4>
-            <div class="chart-container">
-                <canvas id="speedChart"></canvas>
-            </div>
+    </div>
+    <div class="metric-card">
+        <h4>Speed Distribution</h4>
+        <div class="chart-container">
+            <canvas id="speedChart"></canvas>
         </div>
-        <div class="metric-card">
-            <h4>Energy Levels</h4>
-            <div class="chart-container">
-                <canvas id="energyChart"></canvas>
-            </div>
+    </div>
+    <div class="metric-card">
+        <h4>Energy Levels</h4>
+        <div class="chart-container">
+            <canvas id="energyChart"></canvas>
         </div>
-        <div class="metric-card">
-            <h4>Metabolic Rates</h4>
-            <div class="chart-container">
-                <canvas id="metabolismChart"></canvas>
-            </div>
+    </div>
+    <div class="metric-card">
+        <h4>Metabolic Rates</h4>
+        <div class="chart-container">
+            <canvas id="metabolismChart"></canvas>
         </div>
-
+    </div>
   <div id="event-log" class="event-log">
       <!-- Event logs will be inserted here by the logger -->
   </div>
@@ -327,6 +340,165 @@
 
     .metrics-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+#start-simulation,
+#end-simulation {
+    background: #1a237e;
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 14px;
+    margin-right: 10px;
+    margin-bottom: 20px;
+}
+
+#start-simulation:hover,
+#end-simulation:hover {
+    background: #3949ab;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(26, 35, 126, 0.2);
+}
+
+#end-simulation {
+    background: #c62828;
+}
+
+#end-simulation:hover {
+    background: #d32f2f;
+}
+
+/* Speed Control Refinements */
+.speed-control {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.speed-control label {
+    display: block;
+    margin-bottom: 10px;
+    color: #1a237e;
+    font-weight: 600;
+}
+
+#speed-display {
+    font-family: 'Roboto Mono', monospace;
+    color: #3949ab;
+    font-weight: 600;
+}
+
+/* Stats Overview Refinements */
+.stats-overview {
+    background: white;
+    border-radius: 15px;
+    padding: 2rem;
+    margin: 2rem auto;
+    box-shadow: 0 4px 15px rgba(26, 35, 126, 0.1);
+    max-width: 1400px;
+}
+
+.stats-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-item {
+    background: #e8eaf6;
+    padding: 1rem;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stat-item label {
+    font-weight: 600;
+    color: #1a237e;
+    margin: 0;
+}
+
+.numerical-value {
+    color: #3949ab;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 1.1rem;
+}
+
+/* Simulation Timer */
+#simulation-timer {
+    background: white;
+    padding: 1rem;
+    border-radius: 10px;
+    text-align: center;
+    color: #1a237e;
+    font-weight: 600;
+    font-family: 'Roboto Mono', monospace;
+    margin: 1rem 0;
+    box-shadow: 0 4px 15px rgba(26, 35, 126, 0.1);
+}
+
+/* Control Container */
+#controls-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+/* Form Controls Refinements */
+.control-group input[type="range"] {
+    -webkit-appearance: none;
+    height: 8px;
+    background: #e8eaf6;
+    border-radius: 4px;
+    outline: none;
+}
+
+.control-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #1a237e;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.control-group input[type="range"]::-webkit-slider-thumb:hover {
+    background: #3949ab;
+    transform: scale(1.1);
+}
+
+/* Additional Responsive Adjustments */
+@media (max-width: 768px) {
+    .control-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .control-group label {
+        min-width: unset;
+        margin-bottom: 5px;
+    }
+    
+    .stats-group {
+        grid-template-columns: 1fr;
+    }
+    
+    #start-simulation,
+    #end-simulation {
+        width: 100%;
+        margin-bottom: 10px;
     }
 }
 </style>

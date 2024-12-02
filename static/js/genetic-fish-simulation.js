@@ -734,16 +734,6 @@ handleBreedingResponse(newfish_data, sortedFish, previousSpeed) {
                     <span>${currentStats.averageMetabolism.toFixed(4)}</span>
                 </div>
             </div>
-            <div class="generation-stats">
-                <div class="stat-item">
-                    <label>Peak Population:</label>
-                    <span>${generationStats.peakPopulation || 0}</span>
-                </div>
-                <div class="stat-item">
-                    <label>Survival Rate:</label>
-                    <span>${((generationStats.survivalRate || 0) * 100).toFixed(1)}%</span>
-                </div>
-            </div>
         `;
 
         this.overall_stats_display.innerHTML = html;
