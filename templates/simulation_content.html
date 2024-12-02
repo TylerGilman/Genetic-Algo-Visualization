@@ -58,8 +58,8 @@
             </div>
 
 
-            <button type="button" id="start-simulation" class="control-button">Start Simulation</button>
-
+    <button id="start-simulation">Start Simulation</button>
+    <button id="end-simulation" style="display: none;">End Simulation</button>
             <!-- Simulation Speed Control -->
             <div id="simulation-controls" class="speed-control">
                 <label for="simulation-speed">Simulation Speed: <span id="speed-display">1.0x</span></label>
@@ -79,15 +79,6 @@
         <div id="simulation-timer" class="timer">Elapsed Time: 00:00:00</div>
         <div id="stats-container"></div>
         <div id="stats" class="stats-display"></div>
-    </div>
-
-    <!-- Neural Network Section -->
-    <div class="network-section">
-        <h3 class="section-title">Neural Network Evolution</h3>
-        <div class="chart-container primary-chart">
-            <canvas id="neural-weights-chart"></canvas>
-        </div>
-        <div id="neural-stats" class="neural-stats"></div>
     </div>
 
     <!-- Performance Metrics -->
@@ -120,6 +111,22 @@
   <div id="event-log" class="event-log">
       <!-- Event logs will be inserted here by the logger -->
   </div>
+
+    <script>
+    // Add this to ensure event log functionality
+    window.addEventListener('load', () => {
+    document.querySelector('.event-log-header').addEventListener('click', () => {
+        document.querySelector('.event-log-content').classList.toggle('minimized');
+        const button = document.querySelector('.minimize-button');
+        button.textContent = button.textContent === '▼' ? '▲' : '▼';
+    });
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        window.uiController = new UIController();
+    });
+</script>
+
 
 <style>
 /* Container styles */
@@ -323,14 +330,4 @@
     }
 }
 </style>
-    <script>
-    // Add this to ensure event log functionality
-    window.addEventListener('load', () => {
-    document.querySelector('.event-log-header').addEventListener('click', () => {
-        document.querySelector('.event-log-content').classList.toggle('minimized');
-        const button = document.querySelector('.minimize-button');
-        button.textContent = button.textContent === '▼' ? '▲' : '▼';
-    });
-    });
-</script>
 </div>

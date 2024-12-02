@@ -1,4 +1,3 @@
-// simulation-logger.js
 class SimulationLogger {
     constructor() {
         this.container = document.createElement('div');
@@ -80,8 +79,14 @@ class SimulationLogger {
         const entry = document.createElement('div');
         entry.className = `log-entry ${type}`;
         entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-        entries.appendChild(entry);
-        entries.scrollTop = entries.scrollHeight;
+        
+        // Prepend new log at the top
+        entries.prepend(entry);
+    }
+
+    clear() {
+        const entries = this.container.querySelector('.log-entries');
+        entries.innerHTML = ''; // Clear all log entries
     }
 }
 

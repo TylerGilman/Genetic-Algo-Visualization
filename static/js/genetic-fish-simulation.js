@@ -31,7 +31,6 @@ class GeneticFishSimulation {
         this.time_data = [];
         this.fish_data = [];
         this.deadFish = []; 
-
         
         // Generation tracking
         this.generation = 1;
@@ -68,18 +67,7 @@ class GeneticFishSimulation {
         }
         statsContainer.appendChild(this.overall_stats_display);
 
-        this.neural_stats = {
-            generations: [],
-            currentGen: {
-                wih: { mean: 0, std: 0, min: 0, max: 0 },
-                who: { mean: 0, std: 0, min: 0, max: 0 }
-            }
-        };
-
-        // Initialize neural network stats chart
-        this.initializeNeuralStatsChart();   
-
-        
+        // Initialize fishes
         this.initializeFishes();
     }
 
@@ -105,6 +93,16 @@ class GeneticFishSimulation {
       }
     }
 
+
+notifyStateChange() {
+    if (this.stateChangeCallback && typeof this.stateChangeCallback === 'function') {
+        try {
+            this.stateChangeCallback(this.getSimulationState());
+        } catch (error) {
+            console.error("Error in stateChangeCallback:", error);
+        }
+    }
+}
 
     initializeNeuralStatsChart() {
         const ctx = document.getElementById('neural-weights-chart');
@@ -334,57 +332,62 @@ class GeneticFishSimulation {
         return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 
-    animate(currentTime) {
-        if (!this.is_running) return;
 
-        if (this.speed_multiplier === 0) {
-            requestAnimationFrame((time) => this.animate(time));
-            return;
-        }
+clearCanvas() {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillStyle = 'black';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+}
 
-        const deltaTime = (currentTime - this.last_animation_time) / 1000;
-        this.simulation_time += deltaTime * this.speed_multiplier;
+animate(currentTime) {
+    if (!this.is_running) return; // Stop animation if simulation is not running
 
-        // Calculate generation time remaining
-        const generationElapsed = this.simulation_time - this.generation_start_time;
-        const timeRemaining = Math.max(0, this.generation_length - generationElapsed);
-        
-        // Update timers and stats every frame
-        this.updateTimers();
-        this.updateOverallStats();
-
-        // Collect data every second of simulation time
-        if (Math.floor(this.simulation_time) > this.time_data.length) {
-            this.collectData();
-        }
-
-        // Check for generation end
-        if (timeRemaining <= 0 && !this.is_breeding) {
-            console.log("Generation ended, triggering breeding");
-            this.triggerBreeding();
-        }
-
-        // Update food generation
-        this.time_since_last_food += deltaTime * this.speed_multiplier;
-        if (this.time_since_last_food >= this.food_interval) {
-            this.generateFood();
-            this.time_since_last_food = 0;
-        }
-
-        // Clear and redraw
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.fillStyle = 'black';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // Draw simulation elements
-        this.drawFood();
-        this.updateAndDrawFishes(deltaTime);
-        this.drawTime();
-        this.drawGenerationTime();
-
-        this.last_animation_time = currentTime;
-        requestAnimationFrame((time) => this.animate(time));
+    if (this.speed_multiplier === 0) {
+        requestAnimationFrame((time) => this.animate(time)); // Pause but continue listening
+        return;
     }
+
+    const deltaTime = (currentTime - this.last_animation_time) / 1000;
+    this.simulation_time += deltaTime * this.speed_multiplier;
+
+    // Calculate generation time remaining
+    const generationElapsed = this.simulation_time - this.generation_start_time;
+    const timeRemaining = Math.max(0, this.generation_length - generationElapsed);
+
+    // Update timers and stats every frame
+    this.updateTimers();
+    this.updateOverallStats();
+
+    // Collect data every second of simulation time
+    if (Math.floor(this.simulation_time) > this.time_data.length) {
+        this.collectData();
+    }
+
+    // Check for generation end
+    if (timeRemaining <= 0 && !this.is_breeding) {
+        console.log("Generation ended, triggering breeding");
+        this.triggerBreeding();
+    }
+
+    // Food generation
+    this.time_since_last_food += deltaTime * this.speed_multiplier;
+    if (this.time_since_last_food >= this.food_interval) {
+        this.generateFood();
+        this.time_since_last_food = 0;
+    }
+
+    // Clear and redraw the canvas
+    this.clearCanvas();
+    this.drawFood();
+    this.updateAndDrawFishes(deltaTime);
+    this.drawTime();
+    this.drawGenerationTime();
+
+    this.last_animation_time = currentTime;
+
+    // Continue the animation loop
+    requestAnimationFrame((time) => this.animate(time));
+}
 
 updateAndDrawFishes(deltaTime) {
     // Update dead fish energy/metabolism (if using that feature)
@@ -593,32 +596,21 @@ triggerBreeding() {
     const previousSpeed = this.speed_multiplier;
     this.setSpeed(0);
 
-    const livingFish = this.fishes.filter(fish => !fish.isDead());
-    const numToBreed = Math.ceil(livingFish.length / 2);
-    
-    // Sort by fitness
-    const sortedFish = livingFish.sort((a, b) => b.calculateFitness() - a.calculateFitness());
-    
-    // Split into breeding and non-breeding pools
-    const breedingPool = sortedFish.slice(0, numToBreed);
-    const nonBreedingPool = sortedFish.slice(numToBreed);
-
-    console.log('Breeding pool composition:');
-    console.log(`- Total population needed: ${this.params.population_size}`);
-    console.log(`- Breeding pairs: ${Math.floor(breedingPool.length/2)} (${breedingPool.length} fish)`);
-    console.log(`- Non-breeding: ${nonBreedingPool.length}`);
-    console.log(`- Expected children: ${breedingPool.length}`);
-    console.log(`- Final total will be: ${breedingPool.length} + ${breedingPool.length} + ${nonBreedingPool.length} = ${breedingPool.length * 2 + nonBreedingPool.length}`);
-
-    if (breedingPool.length === 0) {
+    // Combine living and dead fish for ranking
+    const allFish = [...this.fishes, ...this.deadFish];
+    if (allFish.length === 0) {
         console.error('Population extinct');
         this.is_breeding = false;
         this.setSpeed(previousSpeed);
         return;
     }
 
+    // Sort fish by fitness
+    const sortedFish = allFish.sort((a, b) => b.calculateFitness() - a.calculateFitness());
+    const top50Percent = sortedFish.slice(0, Math.ceil(sortedFish.length / 2));
+
     // Format data for server
-    const fish_data = breedingPool.map(fish => ({
+    const fish_data = top50Percent.map(fish => ({
         genome: {
             color: fish.genome.color,
             speed: fish.genome.speed,
@@ -644,7 +636,7 @@ triggerBreeding() {
         if (!Array.isArray(newfish_data)) {
             throw new Error('Invalid breeding data format received');
         }
-        this.handleBreedingResponse(newfish_data, breedingPool, nonBreedingPool, previousSpeed);
+        this.handleBreedingResponse(newfish_data, sortedFish, previousSpeed);
     })
     .catch(error => {
         console.error('Breeding error:', error);
@@ -653,52 +645,49 @@ triggerBreeding() {
     });
 }
 
-handleBreedingResponse(newfish_data, breedingPool, nonBreedingPool, previousSpeed) {
+handleBreedingResponse(newfish_data, sortedFish, previousSpeed) {
     try {
         this.food_items = [];
-        
-        if (this.params.breeding_strategy === 'keep_parents') {
-            this.fishes = [...breedingPool];
-            
-            newfish_data.forEach(fish_data => {
-                if (this.fishes.length < this.params.population_size) {
-                    const fish = new Fish(
-                        Math.random() * this.canvas.width,
-                        Math.random() * this.canvas.height,
-                        fish_data.genome,
-                        this.params.water_temperature,
-                        this.logger
-                    );
-                    this.fishes.push(fish);
-                }
-            });
-        } else {
-            this.fishes = [...nonBreedingPool];
-            
-            newfish_data.forEach(fish_data => {
-                if (this.fishes.length < this.params.population_size) {
-                    const fish = new Fish(
-                        Math.random() * this.canvas.width,
-                        Math.random() * this.canvas.height,
-                        fish_data.genome,
-                        this.params.water_temperature,
-                        this.logger
-                    );
-                    this.fishes.push(fish);
-                }
-            });
+        const newGeneration = [];
+
+        // Add offspring first
+        newfish_data.forEach(fish_data => {
+            if (newGeneration.length < this.params.population_size) {
+                const fish = new Fish(
+                    Math.random() * this.canvas.width,
+                    Math.random() * this.canvas.height,
+                    fish_data.genome,
+                    this.params.water_temperature,
+                    this.logger
+                );
+                newGeneration.push(fish);
+            }
+        });
+
+        // Fill the remaining slots with parents, then non-parents
+        for (const fish of sortedFish) {
+            if (newGeneration.length >= this.params.population_size) break;
+            const respawnedFish = new Fish(
+                Math.random() * this.canvas.width,
+                Math.random() * this.canvas.height,
+                fish.genome,
+                this.params.water_temperature,
+                this.logger
+            );
+            respawnedFish.energy = 100; // Reset energy
+            newGeneration.push(respawnedFish);
         }
 
+        // Update fish population
+        this.fishes = newGeneration;
+        this.deadFish = []; // Clear dead fish
         this.generation++;
         this.stats.setGeneration(this.generation);
         this.generation_start_time = this.simulation_time;
-        
-        if (this.logger) {
-            this.logger.log('breed', 
-                `Generation ${this.generation}: ${this.fishes.length} fish`
-            );
-        }
 
+        if (this.logger) {
+            this.logger.log('breed', `Generation ${this.generation}: ${this.fishes.length} fish`);
+        }
     } catch (error) {
         console.error('Error handling breeding response:', error);
     } finally {

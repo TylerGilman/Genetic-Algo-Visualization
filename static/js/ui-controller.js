@@ -1,300 +1,104 @@
 class UIController {
     constructor() {
         console.log("Initializing UIController");
-        this.simulation = null;
-        
-        // Initialize DOM elements with validation
+
+        // Get references to DOM elements
+        this.form = document.getElementById('simulation-form');
         this.startButton = document.getElementById('start-simulation');
-        if (!this.startButton) {
-            console.error("Start button not found");
-            return;
+        this.endButton = document.getElementById('end-simulation');
+
+        // Check for missing elements
+        if (!this.form) console.error("Form not found: 'simulation-form'");
+        if (!this.startButton) console.error("Start button not found: 'start-simulation'");
+        if (!this.endButton) console.error("End button not found: 'end-simulation'");
+
+        if (!this.form || !this.startButton || !this.endButton) {
+            throw new Error("Required DOM elements are missing. Check IDs: 'simulation-form', 'start-simulation', 'end-simulation'.");
         }
 
-        this.endButton = document.createElement('button');
-        this.endButton.id = 'end-simulation';
-        this.endButton.textContent = 'End Simulation';
+        // Initially hide the End button
         this.endButton.style.display = 'none';
-        this.startButton.parentNode.insertBefore(this.endButton, this.startButton.nextSibling);
-        
-        const elements = {
-            form: document.getElementById('simulation-form'),
-            statsElement: document.getElementById('stats'),
-            speedControl: document.getElementById('simulation-speed'),
-            speedDisplay: document.getElementById('speed-display'),
-            timerElement: document.getElementById('simulation-timer'),
-            generationDisplay: document.getElementById('generation-number'),
-            generationCountdown: document.getElementById('generation-countdown')
-        };
 
-        // Make generation elements optional to prevent crashes
-        if (!elements.generationDisplay) {
-            console.warn("Generation display element not found, creating one");
-            elements.generationDisplay = document.createElement('span');
-            elements.generationDisplay.id = 'generation-number';
-            if (elements.timerElement) {
-                elements.timerElement.parentNode.insertBefore(elements.generationDisplay, elements.timerElement);
-            }
-        }
-
-        if (!elements.generationCountdown) {
-            console.warn("Generation countdown element not found, creating one");
-            elements.generationCountdown = document.createElement('span');
-            elements.generationCountdown.id = 'generation-countdown';
-            if (elements.generationDisplay) {
-                elements.generationDisplay.parentNode.insertBefore(elements.generationCountdown, elements.generationDisplay.nextSibling);
-            }
-        }
-
-        // Remove generation elements from required elements check
-        const requiredElements = ['form', 'statsElement', 'speedControl', 'speedDisplay', 'timerElement'];
-        const missingElements = requiredElements
-            .filter(key => !elements[key])
-            .map(key => key);
-
-        if (missingElements.length > 0) {
-            console.error("Missing UI elements:", missingElements.join(', '));
-            return;
-        }
-
-        // Assign verified elements
-        Object.assign(this, elements);
-
-        this.updateInterval = null;
-        this.charts = {
-            size: null,
-            speed: null,
-            energy: null,
-            metabolism: null
-        };
-
+        // Initialize event listeners
         this.initEventListeners();
-        this.resizeSimulationContainer();
-        this.debouncedResize = this.debounce(this.resizeSimulationContainer.bind(this), 250);
-        window.addEventListener('resize', this.debouncedResize);
-        console.log("UIController initialized");
-    }
 
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
+        console.log("UIController initialized");
     }
 
     initEventListeners() {
         console.log("Initializing event listeners");
-        try {
-            this.form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.startSimulation();
-            });
 
-            this.startButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                console.log("Start button clicked");
-                this.startSimulation();
-            });
+        // Add listener to form submit
+        this.form.addEventListener('submit', (e) => {
+            e.preventDefault(); // Prevent default form submission
+            this.startSimulation(); // Start the simulation
+        });
 
-            this.endButton.addEventListener('click', () => {
-                console.log("End button clicked");
-                this.endSimulation();
-            });
-
-            this.speedControl.addEventListener('input', () => this.updateSimulationSpeed());
-        } catch (error) {
-            console.error("Error initializing event listeners:", error);
-        }
+        // Add listener to end simulation button
+        this.endButton.addEventListener('click', () => {
+            console.log("End button clicked");
+            this.endSimulation();
+        });
     }
 
     startSimulation() {
-        console.log("Starting simulation");
-        try {
-            this.initCharts();
-            const params = this.getFormParams();
-            console.log("Simulation parameters:", params);
+        console.log("Starting simulation...");
 
+        try {
+            if (this.simulation) {
+                console.warn("Simulation is already running. End it before starting a new one.");
+                return;
+            }
+
+            // Collect form values
+            const params = this.getFormParams();
             if (!this.validateParams(params)) {
                 console.error("Invalid simulation parameters");
                 return;
             }
 
-            if (!this.simulation) {
-                console.log("Creating new GeneticFishSimulation");
-                this.simulation = new GeneticFishSimulation('fishtank', params);
-                this.setupSimulationCallbacks();
-            } else {
-                console.log("Resetting existing simulation");
-                this.simulation.reset(params);
-            }
-            
-            this.simulation.start();
-            this.updateSimulationSpeed();
-            this.startUpdateInterval();
+            // Create a new simulation instance
+            this.simulation = new GeneticFishSimulation('fishtank', params);
 
-            // Hide start button and show end button
-            this.startButton.style.display = 'none';
-            this.endButton.style.display = 'inline-block';
+            // Clear logs before starting
+            if (this.simulation.logger) {
+                this.simulation.logger.clear();
+            }
+
+            // Start the simulation
+            this.simulation.start();
+
+            // Toggle buttons
+            this.toggleButtons(false);
+
+            console.log("Simulation started with params:", params);
         } catch (error) {
             console.error("Error starting simulation:", error);
-            this.endSimulation();
-        }
-    }
-
-    setupSimulationCallbacks() {
-        if (!this.simulation) return;
-        
-        this.simulation.setStateChangeCallback((state) => {
-            this.startButton.style.display = state.isRunning ? 'none' : 'inline-block';
-            this.endButton.style.display = state.isRunning ? 'inline-block' : 'none';
-            this.speedDisplay.textContent = state.isPaused ? "Paused" : `${state.speedMultiplier.toFixed(1)}x`;
-        });
-
-        this.simulation.setTimerCallback((timerState) => {
-            if (this.timerElement) {
-                this.timerElement.textContent = `Elapsed Time: ${timerState.elapsedTime}`;
-            }
-            if (this.generationDisplay) {
-                this.generationDisplay.textContent = timerState.generation;
-            }
-            if (this.generationCountdown) {
-                this.generationCountdown.textContent = timerState.generationTime;
-            }
-        });
-    }
-
-    startUpdateInterval() {
-        if (this.updateInterval) {
-            clearInterval(this.updateInterval);
-        }
-        this.updateInterval = setInterval(() => this.updateStats(), 1000);
-        console.log("Stats update interval set");
-    }
-
-    initCharts() {
-        const chartConfigs = [
-            { id: 'sizeChart', label: 'Average Size', color: 'red' },
-            { id: 'speedChart', label: 'Average Speed', color: 'blue' },
-            { id: 'energyChart', label: 'Average Energy', color: 'green' },
-            { id: 'metabolismChart', label: 'Average Metabolism', color: 'purple' }
-        ];
-
-        try {
-            chartConfigs.forEach(config => {
-                const ctx = document.getElementById(config.id);
-                if (!ctx) {
-                    console.error(`${config.id} canvas not found`);
-                    return;
-                }
-
-                // Clean up existing chart
-                if (this.charts[config.id.replace('Chart', '')]) {
-                    this.charts[config.id.replace('Chart', '')].destroy();
-                }
-
-                this.charts[config.id.replace('Chart', '')] = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: [],
-                        datasets: [{
-                            label: config.label,
-                            data: [],
-                            borderColor: config.color,
-                            fill: false
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: {
-                                type: 'linear',
-                                position: 'bottom',
-                                title: {
-                                    display: true,
-                                    text: 'Time (seconds)'
-                                }
-                            },
-                            y: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: config.label
-                                }
-                            }
-                        }
-                    }
-                });
-            });
-            console.log("Charts initialized:", Object.keys(this.charts));
-        } catch (error) {
-            console.error("Error initializing charts:", error);
-        }
-    }
-
-    updateCharts(data) {
-        if (!data || !data.labels || !data.datasets) {
-            console.error("Invalid data format for updating charts");
-            return;
-        }
-
-        try {
-            Object.entries(this.charts).forEach(([key, chart]) => {
-                if (!chart) {
-                    console.error(`Chart for ${key} not initialized`);
-                    return;
-                }
-                
-                const dataset = data.datasets.find(d => 
-                    d.label.toLowerCase().includes(key.toLowerCase())
-                );
-                
-                if (dataset) {
-                    console.log(`Updating ${key} chart with ${dataset.data.length} points`);
-                    chart.data.labels = data.labels;
-                    chart.data.datasets[0].data = dataset.data;
-                    chart.data.datasets[0].borderColor = dataset.borderColor;
-                    chart.update('quiet');
-                } else {
-                    console.warn(`No data found for ${key} chart`);
-                }
-            });
-        } catch (error) {
-            console.error("Error updating charts:", error);
         }
     }
 
     endSimulation() {
-        console.log("Ending simulation");
+        console.log("Ending simulation...");
+
         try {
             if (this.simulation) {
                 this.simulation.stop();
+                this.simulation = null;
             }
-            if (this.updateInterval) {
-                clearInterval(this.updateInterval);
-                this.updateInterval = null;
-            }
-            this.startButton.style.display = 'inline-block';
-            this.endButton.style.display = 'none';
+
+            // Toggle buttons
+            this.toggleButtons(true);
+
+            console.log("Simulation ended successfully");
         } catch (error) {
             console.error("Error ending simulation:", error);
         }
     }
 
-    updateSimulationSpeed() {
-        try {
-            if (this.simulation) {
-                const speed = parseFloat(this.speedControl.value);
-                this.simulation.setSpeed(speed);
-                this.speedDisplay.textContent = speed === 0 ? "Paused" : `${speed.toFixed(1)}x`;
-            }
-        } catch (error) {
-            console.error("Error updating simulation speed:", error);
-        }
+    toggleButtons(showStart) {
+        console.log(`Toggling buttons: ${showStart ? "Show Start, Hide End" : "Show End, Hide Start"}`);
+        this.startButton.style.display = showStart ? 'inline-block' : 'none';
+        this.endButton.style.display = showStart ? 'none' : 'inline-block';
     }
 
     getFormParams() {
@@ -305,7 +109,7 @@ class UIController {
                 crossover_rate: Number(document.getElementById('crossover_rate').value),
                 food_availability: Number(document.getElementById('food_availability').value),
                 water_temperature: Number(document.getElementById('water_temperature').value),
-                generation_length: Number(document.getElementById('generation_length').value)
+                generation_length: Number(document.getElementById('generation_length').value),
             };
         } catch (error) {
             console.error("Error getting form parameters:", error);
@@ -315,134 +119,19 @@ class UIController {
 
     validateParams(params) {
         if (!params) return false;
-        
+
         const requiredParams = [
             'population_size',
             'mutation_rate',
             'crossover_rate',
             'food_availability',
             'water_temperature',
-            'generation_length'
+            'generation_length',
         ];
 
-        return requiredParams.every(param => {
+        return requiredParams.every((param) => {
             const value = params[param];
             return value !== undefined && value !== null && !isNaN(value);
         });
     }
-
-    updateStats() {
-        try {
-            if (this.simulation) {
-                const graphData = this.simulation.getGraphData();
-                this.updateCharts(graphData);
-                
-                const stats = this.simulation.getStats();
-                this.updateStatsDisplay(stats);
-            }
-        } catch (error) {
-            console.error("Error updating stats:", error);
-        }
-    }
-
-    updateStatsDisplay(stats) {
-        if (!stats || typeof stats !== 'object') {
-            console.error('Invalid stats object');
-            return;
-        }
-
-        try {
-            let html = `
-                <div class="stats-section">
-                    <p>Population: ${stats.population_size || 0}</p>
-                    <p>Food Available: ${stats.food_count || 0}</p>
-                    <p>Water Temperature: ${(stats.water_temperature || 0).toFixed(1)}°C</p>
-                    <p>Simulation Speed: ${(stats.simulation_speed || 0).toFixed(1)}x</p>
-                </div>
-            `;
-
-            if (stats.fish_stats && stats.fish_stats.length > 0) {
-                html += `
-                    <table class="stats-table">
-                        <thead>
-                            <tr>
-                                <th>Color</th>
-                                <th>Speed</th>
-                                <th>Size</th>
-                                <th>Energy</th>
-                                <th>Metabolism</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-
-                stats.fish_stats.forEach(fish => {
-                    if (fish) {
-                        html += `
-                            <tr>
-                                <td><div style="width: 20px; height: 20px; background-color: ${fish.color || '#000'};"></div></td>
-                                <td>${fish.speed || '0'}</td>
-                                <td>${fish.size || '0'}</td>
-                                <td>${fish.energy || '0'}</td>
-                                <td>${fish.metabolism || '0'}</td>
-                            </tr>
-                        `;
-                    }
-                });
-
-                html += `
-                        </tbody>
-                    </table>
-                `;
-            } else {
-                html += '<p>No fish data available</p>';
-            }
-
-            if (this.statsElement) {
-                this.statsElement.innerHTML = html;
-            }
-        } catch (error) {
-            console.error("Error updating stats display:", error);
-        }
-    }
-
-    resizeSimulationContainer() {
-        try {
-            const container = document.getElementById('simulation-container');
-            if (container) {
-                container.style.height = `${window.innerHeight / 2}px`;
-            }
-        } catch (error) {
-            console.error("Error resizing simulation container:", error);
-        }
-    }
-
-    cleanup() {
-        try {
-            if (this.updateInterval) {
-                clearInterval(this.updateInterval);
-            }
-            window.removeEventListener('resize', this.debouncedResize);
-            Object.values(this.charts).forEach(chart => {
-                if (chart && typeof chart.destroy === 'function') {
-                    chart.destroy();
-                }
-            });
-            if (this.simulation) {
-                this.simulation.cleanup();
-            }
-        } catch (error) {
-            console.error("Error during cleanup:", error);
-        }
-    }
 }
-
-// Initialize the UI controller when the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM fully loaded");
-    try {
-        window.uiController = new UIController();
-    } catch (error) {
-        console.error("Failed to initialize UIController:", error);
-    }
-});
