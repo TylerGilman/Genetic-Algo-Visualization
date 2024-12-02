@@ -84,7 +84,7 @@ class Fish {
         this.speed = this.getSpeedFromGenome();
         this.size = this.getSizeFromGenome();
         this.logger = logger;
-
+        
         // Physical properties
         this.massInGrams = Math.exp(genome.size * Math.log(1000));
         this.visualScale = Math.pow(this.massInGrams / 1000, 1/3) * 3;

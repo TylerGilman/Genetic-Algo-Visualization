@@ -12,7 +12,7 @@
                 <output>{{ params.population_size }}</output>
             </div>
 
-            <div class="control-group">
+            <div hidden class="control-group">
                 <label for="mutation_rate">Mutation Rate:</label>
                 <input type="range" id="mutation_rate" name="mutation_rate" 
                     value="{{ '%.2f'|format(params.mutation_rate) }}" min="0" max="1" step="0.05"
@@ -21,7 +21,7 @@
                 <output>{{ '%.2f'|format(params.mutation_rate) }}</output>
             </div>
 
-            <div class="control-group">
+            <div hidden class="control-group">
                 <label for="crossover_rate">Crossover Rate:</label>
                 <input type="range" id="crossover_rate" name="crossover_rate" 
                     value="{{ '%.2f'|format(params.crossover_rate) }}" min="0" max="1" step="0.05"
