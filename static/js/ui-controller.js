@@ -1,22 +1,32 @@
-class UIController {
+class UIController extends SimulationComponent {
     constructor() {
+        super('ui-controller');
         console.log("Initializing UIController");
-        this.simulation = null;
         
-        // Initialize DOM elements with validation
-        this.startButton = document.getElementById('start-simulation');
-        if (!this.startButton) {
-            console.error("Start button not found");
-            return;
-        }
+        this.registry = new ComponentRegistry();
+        this.elements = this.initializeElements();
+        if (!this.elements) return;
 
-        this.endButton = document.createElement('button');
-        this.endButton.id = 'end-simulation';
-        this.endButton.textContent = 'End Simulation';
-        this.endButton.style.display = 'none';
-        this.startButton.parentNode.insertBefore(this.endButton, this.startButton.nextSibling);
+        this.initializeComponents();
+        this.initEventListeners();
         
+        this.simulation = null;
+        this.isSimulationRunning = false;
+        this.charts = {
+            size: null,
+            speed: null,
+            energy: null,
+            metabolism: null
+        };
+        
+        this.updateInterval = null;
+        this.debouncedResize = this.debounce(this.resizeSimulationContainer.bind(this), 250);
+        window.addEventListener('resize', this.debouncedResize);
+    }
+
+    initializeElements() {
         const elements = {
+            startButton: document.getElementById('start-simulation'),
             form: document.getElementById('simulation-form'),
             statsElement: document.getElementById('stats'),
             speedControl: document.getElementById('simulation-speed'),
@@ -26,123 +36,81 @@ class UIController {
             generationCountdown: document.getElementById('generation-countdown')
         };
 
-        // Make generation elements optional to prevent crashes
-        if (!elements.generationDisplay) {
-            console.warn("Generation display element not found, creating one");
-            elements.generationDisplay = document.createElement('span');
-            elements.generationDisplay.id = 'generation-number';
-            if (elements.timerElement) {
-                elements.timerElement.parentNode.insertBefore(elements.generationDisplay, elements.timerElement);
-            }
+        // Create end button if it doesn't exist
+        elements.endButton = document.getElementById('end-simulation');
+        if (!elements.endButton) {
+            elements.endButton = document.createElement('button');
+            elements.endButton.id = 'end-simulation';
+            elements.endButton.textContent = 'End Simulation';
+            elements.endButton.style.display = 'none';
+            elements.startButton.parentNode.insertBefore(elements.endButton, elements.startButton.nextSibling);
         }
 
-        if (!elements.generationCountdown) {
-            console.warn("Generation countdown element not found, creating one");
-            elements.generationCountdown = document.createElement('span');
-            elements.generationCountdown.id = 'generation-countdown';
-            if (elements.generationDisplay) {
-                elements.generationDisplay.parentNode.insertBefore(elements.generationCountdown, elements.generationDisplay.nextSibling);
-            }
-        }
-
-        // Remove generation elements from required elements check
-        const requiredElements = ['form', 'statsElement', 'speedControl', 'speedDisplay', 'timerElement'];
+        // Validate required elements
+        const requiredElements = ['startButton', 'form', 'statsElement', 'speedControl', 'speedDisplay', 'timerElement'];
         const missingElements = requiredElements
             .filter(key => !elements[key])
             .map(key => key);
 
         if (missingElements.length > 0) {
             console.error("Missing UI elements:", missingElements.join(', '));
-            return;
+            return null;
         }
 
-        // Assign verified elements
-        Object.assign(this, elements);
+        return elements;
+    }
 
-        this.updateInterval = null;
+    initEventListeners() {
+        // Form submission - only handle explicit form submissions
+        this.elements.form.addEventListener('submit', (e) => {
+            e.preventDefault(); // Prevent form submission
+        });
+
+        // Start button handler
+        this.elements.startButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // Prevent event from bubbling to form
+            if (!this.isSimulationRunning) {
+                console.log("Start button clicked");
+                this.startSimulation();
+            }
+        });
+
+        // End button handler
+        this.elements.endButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // Prevent event from bubbling to form
+            if (this.isSimulationRunning) {
+                console.log("End button clicked");
+                this.endSimulation();
+            }
+        });
+
+        // Speed control
+        this.elements.speedControl.addEventListener('input', () => this.updateSimulationSpeed());
+    }
+
+
+    initializeComponents() {
+        // Create and register logger
+        const logger = new SimulationLogger();
+        this.registry.register('logger', logger);
+
+        // Initialize charts
         this.charts = {
             size: null,
             speed: null,
             energy: null,
             metabolism: null
         };
-
-        this.initEventListeners();
-        this.resizeSimulationContainer();
-        this.debouncedResize = this.debounce(this.resizeSimulationContainer.bind(this), 250);
-        window.addEventListener('resize', this.debouncedResize);
-        console.log("UIController initialized");
-    }
-
-cleanup() {
-    try {
-        if (this.updateInterval) {
-            clearInterval(this.updateInterval);
-            this.updateInterval = null;
-        }
-
-        // Remove resize listener
-        window.removeEventListener('resize', this.debouncedResize);
-
-        // Remove event listeners for buttons
-        this.startButton.removeEventListener('click', this.startSimulation);
-        this.endButton.removeEventListener('click', this.endSimulation);
-
-        // Destroy charts to prevent memory leaks
-        Object.values(this.charts).forEach(chart => {
-            if (chart && typeof chart.destroy === 'function') {
-                chart.destroy();
-            }
-        });
-
-        // Clear the simulation object
-        if (this.simulation) {
-            this.simulation.stop();
-            this.simulation = null;
-        }
-    } catch (error) {
-        console.error("Error during cleanup:", error);
-    }
-}
-
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-
-    initEventListeners() {
-        console.log("Initializing event listeners");
-        try {
-            this.form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.startSimulation();
-            });
-
-            this.startButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                console.log("Start button clicked");
-                this.startSimulation();
-            });
-
-            this.endButton.addEventListener('click', () => {
-                console.log("End button clicked");
-                this.endSimulation();
-            });
-
-            this.speedControl.addEventListener('input', () => this.updateSimulationSpeed());
-        } catch (error) {
-            console.error("Error initializing event listeners:", error);
-        }
     }
 
     startSimulation() {
+        if (this.isSimulationRunning) {
+            console.log("Simulation already running");
+            return;
+        }
+
         console.log("Starting simulation");
         try {
             this.initCharts();
@@ -154,26 +122,124 @@ cleanup() {
                 return;
             }
 
+            // Get logger from registry
+            const logger = this.registry.get('logger');
+            if (logger) {
+                logger.clearLogs();
+            }
+
             if (!this.simulation) {
                 console.log("Creating new GeneticFishSimulation");
-                this.simulation = new GeneticFishSimulation('fishtank', params);
-                this.setupSimulationCallbacks();
+                this.simulation = new GeneticFishSimulation('fishtank', params, logger);
+                this.registry.register('simulation', this.simulation);
             } else {
                 console.log("Resetting existing simulation");
                 this.simulation.reset(params);
             }
             
             this.simulation.start();
+            this.isSimulationRunning = true;
             this.updateSimulationSpeed();
             this.startUpdateInterval();
 
-            // Hide start button and show end button
-            this.startButton.style.display = 'none';
-            this.endButton.style.display = 'inline-block';
+            this.elements.startButton.style.display = 'none';
+            this.elements.endButton.style.display = 'inline-block';
+
+            // Emit event
+            this.registry.getEventBus().emit('simulation:started');
         } catch (error) {
             console.error("Error starting simulation:", error);
             this.endSimulation();
         }
+    }
+
+    endSimulation() {
+        if (!this.isSimulationRunning) {
+            console.log("No simulation running");
+            return;
+        }
+
+        console.log("Ending simulation");
+        try {
+            if (this.simulation) {
+                this.simulation.stop();
+                this.isSimulationRunning = false;
+            }
+            if (this.updateInterval) {
+                clearInterval(this.updateInterval);
+                this.updateInterval = null;
+            }
+            
+            // Switch buttons
+            this.elements.startButton.style.display = 'inline-block';
+            this.elements.endButton.style.display = 'none';
+
+            // Emit event
+            this.registry.getEventBus().emit('simulation:ended');
+        } catch (error) {
+            console.error("Error ending simulation:", error);
+        }
+    }
+
+    resetSimulation() {
+        // This method is called when we want to completely reset everything
+        if (this.simulation) {
+            this.simulation.stop();
+            this.registry.cleanup('simulation');
+            this.simulation = null;
+        }
+        
+        // Clear charts
+        Object.values(this.charts).forEach(chart => {
+            if (chart && typeof chart.destroy === 'function') {
+                chart.destroy();
+            }
+        });
+        
+        // Clear logger
+        const logger = this.registry.get('logger');
+        if (logger) {
+            logger.clearLogs();
+        }
+        
+        this.isSimulationRunning = false;
+        this.startButton.style.display = 'inline-block';
+        this.endButton.style.display = 'none';
+    }
+
+    cleanup() {
+        // Clear update interval
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+        }
+
+        // Remove event listeners
+        window.removeEventListener('resize', this.debouncedResize);
+
+        // Cleanup charts
+        Object.values(this.charts).forEach(chart => {
+            if (chart && typeof chart.destroy === 'function') {
+                chart.destroy();
+            }
+        });
+
+        // Cleanup components
+        this.registry.cleanup();
+
+        // Call parent cleanup
+        super.cleanup();
+    }
+
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
     }
 
     setupSimulationCallbacks() {
@@ -299,30 +365,31 @@ cleanup() {
         }
     }
 
-endSimulation() {
-    console.log("Ending simulation");
-    try {
-        if (this.simulation) {
-            this.simulation.stop(); // Stop the simulation and animation loop
-            this.simulation = null; // Clear the simulation object
-        }
+    // UI update handlers
+    updateUIForSimulationStart() {
+        this.elements.startButton.style.display = 'none';
+        this.elements.endButton.style.display = 'inline-block';
+    }
+
+    updateUIForSimulationEnd() {
+        this.elements.startButton.style.display = 'inline-block';
+        this.elements.endButton.style.display = 'none';
+    }
+
+    startUpdateInterval() {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
-            this.updateInterval = null;
         }
-        this.startButton.style.display = 'inline-block';
-        this.endButton.style.display = 'none';
-    } catch (error) {
-        console.error("Error ending simulation:", error);
+        this.updateInterval = setInterval(() => this.updateStats(), 1000);
+        console.log("Stats update interval set");
     }
-}
 
     updateSimulationSpeed() {
         try {
             if (this.simulation) {
-                const speed = parseFloat(this.speedControl.value);
+                const speed = parseFloat(this.elements.speedControl.value);
                 this.simulation.setSpeed(speed);
-                this.speedDisplay.textContent = speed === 0 ? "Paused" : `${speed.toFixed(1)}x`;
+                this.elements.speedDisplay.textContent = speed === 0 ? "Paused" : `${speed.toFixed(1)}x`;
             }
         } catch (error) {
             console.error("Error updating simulation speed:", error);
@@ -452,33 +519,6 @@ endSimulation() {
             console.error("Error resizing simulation container:", error);
         }
     }
-
-    cleanup() {
-        try {
-            if (this.updateInterval) {
-                clearInterval(this.updateInterval);
-            }
-            window.removeEventListener('resize', this.debouncedResize);
-            Object.values(this.charts).forEach(chart => {
-                if (chart && typeof chart.destroy === 'function') {
-                    chart.destroy();
-                }
-            });
-            if (this.simulation) {
-                this.simulation.cleanup();
-            }
-        } catch (error) {
-            console.error("Error during cleanup:", error);
-        }
-    }
 }
-
-// Initialize the UI controller when the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM fully loaded");
-    try {
-        window.uiController = new UIController();
-    } catch (error) {
-        console.error("Failed to initialize UIController:", error);
-    }
-});
+// Make UIController available globally
+window.UIController = UIController;

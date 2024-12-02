@@ -137,6 +137,7 @@ class Fish {
         if(this.logger) {
             this.logger.log('spawn', `Fish spawned (${this.massInGrams.toFixed(1)}g)`);
         }
+        this.hasLoggedDeath = false; // Log death once
     }
 
     initializeBrain() {
@@ -211,7 +212,10 @@ class Fish {
             if (dist < eatDistance) {
                 const energyGain = 50 * (prey.massInGrams / this.massInGrams);
                 this.energy = Math.min(this.energy + energyGain, 100);
-                prey.energy = -1;
+                
+                // Set prey's energy to 0 to ensure it's not selected for breeding
+                prey.energy = 0;
+                prey.hasLoggedDeath = true; // Prevent death message from appearing again
                 
                 if (this.logger) {
                     this.logger.log('eat', 
@@ -244,10 +248,13 @@ class Fish {
     }
 
     isDead() {
-        if (this.energy <= 0 && this.logger) {
-            this.logger.log('death', 
-                `Fish (${this.massInGrams.toFixed(1)}g) died`
-            );
+        if (this.energy <= 0 && !this.hasLoggedDeath) {
+            this.hasLoggedDeath = true;
+            if (this.logger) {
+              this.logger.log('death', 
+                  `Fish (${this.massInGrams.toFixed(1)}g) died`
+              );
+            }
         }
         return this.energy <= 0;
     }
@@ -566,4 +573,3 @@ getOuterContour() {
         return finPath;
     }
 }
-
