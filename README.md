@@ -1,120 +1,147 @@
-# Genetic-Algo-Visualization
+# Neural Network Fish Evolution Simulator
 
-An interactive web-based simulation demonstrating genetic algorithms through the evolution of fish populations using HTMX and Python (FastAPI). Fish adapt to their environment based on factors like water temperature, food availability, and metabolic costs.
+An interactive web-based simulation that demonstrates evolutionary algorithms and neural networks through the behavior of virtual fish. The simulation combines physical modeling, neural network decision-making, and genetic algorithms to create an educational platform for understanding artificial life and evolution.
 
-## Quick Start
+## Features
 
-1. Create and start virtual env:
+- Real-time fish behavior simulation with physics-based movement
+- Neural network-controlled decision making for each fish
+- Genetic evolution across generations with trait inheritance
+- Advanced metabolism system affected by size and temperature
+- Interactive controls for simulation parameters
+- Real-time data visualization and statistics
+- Event logging system for tracking simulation events
+- Responsive web interface with HTMX integration
+
+## Technology Stack
+
+- **Backend**: FastAPI (Python)
+- **Frontend**: Vanilla JavaScript with HTML5 Canvas
+- **Data Visualization**: Chart.js
+- **Templating**: Jinja2
+- **Styling**: Custom CSS with Bootstrap integration
+- **Real-time Updates**: HTMX
+
+## Installation
+
+1. Clone the repository:
+```bash
+git clone [repository-url]
+cd neural-fish-simulation
+```
+
+2. Create and activate a virtual environment:
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-2. Install requirements:
+3. Install dependencies:
 ```bash
-pip install -r requirements.txt
+pip install fastapi uvicorn jinja2 python-dotenv
 ```
 
-3. Run the application:
+4. Set up environment variables:
 ```bash
-python3 main.py
+cp .env.example .env
 ```
 
-4. Navigate to `localhost:_port_in_.env_`
+5. Start the development server:
+```bash
+python main.py
+```
+
+The application will be available at `http://localhost:8000`
 
 ## Project Structure
 
-### Backend Files
-- `main.py` - FastAPI application entry point and server configuration
-- `handlers.py` - API route handlers and simulation parameter management
-- `.env` - Environment configuration (port settings)
+```
+├── static/
+│   └── js/
+│       ├── css/
+│       │   └── styles.css
+│       ├── fish.js              # Fish entity implementation
+│       ├── genetic-fish-simulation.js  # Core simulation logic
+│       ├── simulation-logger.js # Event logging system
+│       ├── simulation-stats.js  # Statistics tracking
+│       ├── ui-controller.js     # UI management
+│       └── utils.js            # Utility functions
+├── templates/
+│   ├── intro.html             # Educational introduction
+│   ├── simulation_content.html # Main simulation interface
+│   └── simulation_page.html   # Page layout template
+├── handlers.py                # API route handlers
+└── main.py                    # Application entry point
+```
 
-### Frontend Files
-- `templates/`
-  - `simulation_page.html` - Main simulation view template
-  - `simulation_content.html` - Partial template for simulation controls and stats
+## Core Components
 
-### JavaScript Components
-- `ui-controller.js` - Main UI management and event handling
-- `genetic-fish-simulation.js` - Core simulation logic and rendering
-- `fish.js` - Fish entity implementation with physics and genetics
-- `environment-parameters.js` - Environment state management
-- `simulation-stats.js` - Statistics tracking and data collection
+### Fish Entity (`fish.js`)
+- Physics-based movement system with constrained body segments
+- Neural network brain for decision making
+- Metabolic system affected by size and temperature
+- Genetic traits including color, size, and speed
+- Personality traits affecting behavior
 
-## Features
+### Simulation Engine (`genetic-fish-simulation.js`)
+- Population management
+- Food generation system
+- Breeding and evolution logic
+- Environmental parameter management
+- Real-time statistics collection
 
-### Simulation Components
-- Real-time fish population visualization
-- Dynamic environment parameters:
-  - Water temperature affecting metabolism
-  - Food generation rate
-  - Population size control
-  - Mutation and crossover rates
+### User Interface
+- Interactive parameter controls
+- Real-time data visualization
+- Event logging
+- Generation tracking
+- Speed controls
 
-### Interactive Controls
-- Simulation speed adjustment
-- Start/stop functionality
-- Parameter modification
-- Real-time statistics visualization
+## Simulation Parameters
 
-### Fish Implementation
-Each fish entity features:
-- Genome-based traits (color, speed, size)
-- Physics-based movement using constrained points
-- Temperature-dependent metabolism
-- Energy system for survival
-- Adaptive fins and swimming mechanics
+- **Population Size**: Number of fish in each generation
+- **Mutation Rate**: Frequency of genetic mutations
+- **Crossover Rate**: Probability of trait mixing during breeding
+- **Food Availability**: Rate of food generation
+- **Water Temperature**: Affects metabolism and behavior
+- **Generation Length**: Duration of each generation
 
-## Technical Implementation
+## Neural Network Architecture
 
-### Server Architecture
-- FastAPI backend handling:
-  - Simulation state management (RESTful)
-  - Genetic recombination calculations
-  - HTMX integration for dynamic updates
+### Input Layer (10 neurons)
+- Nearest food angle and distance
+- Nearest fish angle and distance
+- Predator detection
+- Current energy level
+- Current speed
+- Trait inputs (aggressiveness, cautiousness, food motivation)
 
-### Frontend Architecture
-- HTML5 Canvas for rendering
-- Modern JavaScript (ES6+) for simulation logic, as well as parent selection
-- HTMX for seamless server communication
-- Chart.js for real-time statistics visualization
+### Hidden Layer (12 neurons)
+- Hyperbolic tangent activation
+- Adaptive bias based on personality traits
 
-### Genetic Algorithm
-- Server-side implementation
-- AJAX-based generation updates
-- Fitness calculation based on:
-  - Survival duration
-  - Food consumption
-  - Energy efficiency
-  - Environmental adaptation
+### Output Layer (2 neurons)
+- Turn amount (-π/16 to π/16)
+- Speed multiplier (0.7x to 1.3x)
 
-## Scientific Models
+## Contributing
+Anyone is welcome to contribute! We want to make this the best educational tool possible and it has MANY areas where it can be improved. 
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-The simulation incorporates biological models for fish behavior:
+## Authors
 
-### Metabolic Calculations
-Based on research from:
-- [Fish Metabolic Scaling](https://besjournals.onlinelibrary.wiley.com/doi/10.1046/j.1365-2656.1999.00337.x#:~:text=The%20general%20equation%20for%20all,fish%20at%200%C2%B0C.)
-- [Temperature Effects on Fish Metabolism](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7678922/)
+- Tyler Gilman
+- Nia Quinn
 
-Key features:
-- Temperature-dependent metabolic rates using Q10 principle
-- Allometric scaling for size-dependent energy consumption
-- Hydrodynamic-inspired movement patterns
+## Acknowledgments
 
-## License
-
-This project is open source and available for educational and research purposes.
-
----
-Note: This simulation is designed for educational purposes to demonstrate genetic algorithms and biological modeling concepts.
-
-
-## Todo 
-
-Fix selection. Need to try different types...
-1) Replace whole population with children of top 50%
-2) Replace bottom 50% with children of top 50%
-3) Replace parents with children, keep rest of population
-
-
+This project was created as an educational tool to demonstrate the principles of:
+- Genetic Algorithms
+- Neural Networks
+- Artificial Life
+- Evolution Simulation
+- Physical Modeling
