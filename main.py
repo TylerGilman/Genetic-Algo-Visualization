@@ -19,7 +19,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(router)
 
 if __name__ == "__main__":
-    listen_addr = os.getenv("LISTEN_ADDR", "localhost:8000")
+    listen_addr = os.getenv("LISTEN_ADDR", "0.0.0.0:8000")
     host, port = listen_addr.split(":")
 
     print(f"Starting server at http://{host}:{port}")
