@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Genetic Fish Simulation</title>
-    <link type="css" rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}" />
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='css/styles.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -26,12 +26,12 @@
         {% include "simulation_content.html" %}
     </div>
     
-    <script src="{{ url_for('static', path='js/utils.js') }}"></script>
-    <script src="{{ url_for('static', path='js/simulation-logger.js') }}"></script>
-    <script src="{{ url_for('static', path='js/simulation-stats.js') }}"></script>
-    <script src="{{ url_for('static', path='js/fish.js') }}"></script>
-    <script src="{{ url_for('static', path='js/genetic-fish-simulation.js') }}"></script>
-    <script src="{{ url_for('static', path='js/ui-controller.js') }}"></script>
+    <script src="{{ url_for('static', path='js/utils.js') | replace('http://', 'https://') }}"></script>
+    <script src="{{ url_for('static', path='js/simulation-logger.js') | replace('http://', 'https://') }}"></script>
+    <script src="{{ url_for('static', path='js/simulation-stats.js') | replace('http://', 'https://') }}"></script>
+    <script src="{{ url_for('static', path='js/fish.js') | replace('http://', 'https://') }}"></script>
+    <script src="{{ url_for('static', path='js/genetic-fish-simulation.js') | replace('http://', 'https://') }}"></script>
+    <script src="{{ url_for('static', path='js/ui-controller.js') | replace('http://', 'https://') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 <style>
 /* Global Styles *
