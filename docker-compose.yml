@@ -7,6 +7,7 @@ services:
     build: .
     networks:
       - web
+    working_dir: /app
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.fish.rule=Host(`fish.tylergilman.com`)"
@@ -18,7 +19,7 @@ services:
       - "traefik.http.routers.fish.middlewares=securityheaders"
     environment:
       - LISTEN_ADDR=0.0.0.0:8000
-      - VIRTUAL_PROTO=https  # Critical for URL generation
+      - VIRTUAL_PROTO=https
     restart: unless-stopped
     volumes:
       - ./:/app
