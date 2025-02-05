@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
 import uvicorn
 import os
+from pathlib import Path
 from handlers import router
 
 # Load environment variables
