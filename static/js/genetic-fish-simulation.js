@@ -1,20 +1,23 @@
 class GeneticFishSimulation {
-    constructor(canvasId, params) {
+    constructor(canvasId, params, logger) {
         this.canvas = document.getElementById(canvasId);
         if (!this.canvas) {
             throw new Error('Canvas element not found');
         }
         this.ctx = this.canvas.getContext('2d');
+        this.logger = logger;
+        this.isRunning = false;
+        this.animationFrameId = null;
         
-        // Properly parse all parameters with defaults
+        // Initialize parameters
         this.params = {
-            population_size: Number(params.population_size) || 10,
-            mutation_rate: Number(params.mutation_rate) || 0.01,
-            crossover_rate: Number(params.crossover_rate) || 0.7,
-            food_availability: Number(params.food_availability) || 1,
-            water_temperature: Number(params.water_temperature) || 20,
-            generation_length: Number(params.generation_length) || 60,
-            breeding_strategy: 'keep_parents'
+            population_size: params.population_size || 10,
+            mutation_rate: params.mutation_rate || 0.01,
+            crossover_rate: params.crossover_rate || 0.7,
+            food_availability: params.food_availability || 0.5,
+            water_temperature: params.water_temperature || 20,
+            generation_length: params.generation_length || 60,
+            breeding_strategy: params.breeding_strategy || 'keep_parents'
         };
         
         console.log("Initialized with parameters:", this.params);
@@ -27,7 +30,6 @@ class GeneticFishSimulation {
         this.simulation_time = 0;
         this.last_animation_time = 0;
         this.stats = new SimulationStats();
-        this.logger = new SimulationLogger();
         this.time_data = [];
         this.fish_data = [];
         this.deadFish = []; 
@@ -93,16 +95,15 @@ class GeneticFishSimulation {
       }
     }
 
-
-notifyStateChange() {
-    if (this.stateChangeCallback && typeof this.stateChangeCallback === 'function') {
-        try {
-            this.stateChangeCallback(this.getSimulationState());
-        } catch (error) {
-            console.error("Error in stateChangeCallback:", error);
+    notifyStateChange() {
+        if (this.stateChangeCallback && typeof this.stateChangeCallback === 'function') {
+            try {
+                this.stateChangeCallback(this.getSimulationState());
+            } catch (error) {
+                console.error("Error in stateChangeCallback:", error);
+            }
         }
     }
-}
 
     initializeNeuralStatsChart() {
         const ctx = document.getElementById('neural-weights-chart');
@@ -277,6 +278,8 @@ notifyStateChange() {
     }
 
     start() {
+        if (this.is_running) return;
+        
         this.is_running = true;
         this.last_animation_time = performance.now();
         this.simulation_time = 0;
@@ -286,7 +289,13 @@ notifyStateChange() {
         this.is_breeding = false;
         
         this.notifyStateChange();
-        this.animate(this.last_animation_time);
+        this.animate();
+        
+        // Hide welcome message
+        const simulationContainer = document.getElementById('simulation-container');
+        if (simulationContainer) {
+            simulationContainer.classList.add('simulation-running');
+        }
     }
 
     stop() {
@@ -332,86 +341,80 @@ notifyStateChange() {
         return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 
-
-clearCanvas() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.ctx.fillStyle = 'black';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-}
-
-animate(currentTime) {
-    if (!this.is_running) return; // Stop animation if simulation is not running
-
-    if (this.speed_multiplier === 0) {
-        requestAnimationFrame((time) => this.animate(time)); // Pause but continue listening
-        return;
+    clearCanvas() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillStyle = 'black';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    const deltaTime = (currentTime - this.last_animation_time) / 1000;
-    this.simulation_time += deltaTime * this.speed_multiplier;
+    animate() {
+        if (!this.is_running) return;
 
-    // Calculate generation time remaining
-    const generationElapsed = this.simulation_time - this.generation_start_time;
-    const timeRemaining = Math.max(0, this.generation_length - generationElapsed);
+        const currentTime = performance.now();
+        const deltaTime = (currentTime - this.last_animation_time) / 1000;
+        this.last_animation_time = currentTime;
 
-    // Update timers and stats every frame
-    this.updateTimers();
-    this.updateOverallStats();
+        this.simulation_time += deltaTime * this.speed_multiplier;
 
-    // Collect data every second of simulation time
-    if (Math.floor(this.simulation_time) > this.time_data.length) {
-        this.collectData();
+        // Calculate generation time remaining
+        const generationElapsed = this.simulation_time - this.generation_start_time;
+        const timeRemaining = Math.max(0, this.generation_length - generationElapsed);
+
+        // Update timers and stats every frame
+        this.updateTimers();
+        this.updateOverallStats();
+
+        // Collect data every second of simulation time
+        if (Math.floor(this.simulation_time) > this.time_data.length) {
+            this.collectData();
+        }
+
+        // Check for generation end
+        if (timeRemaining <= 0 && !this.is_breeding) {
+            console.log("Generation ended, triggering breeding");
+            this.triggerBreeding();
+        }
+
+        // Food generation
+        this.time_since_last_food += deltaTime * this.speed_multiplier;
+        if (this.time_since_last_food >= this.food_interval) {
+            this.generateFood();
+            this.time_since_last_food = 0;
+        }
+
+        // Clear and redraw the canvas
+        this.clearCanvas();
+        this.drawFood();
+        this.updateAndDrawFishes(deltaTime);
+        this.drawTime();
+        this.drawGenerationTime();
+
+        this.animationFrameId = requestAnimationFrame(() => this.animate());
     }
 
-    // Check for generation end
-    if (timeRemaining <= 0 && !this.is_breeding) {
-        console.log("Generation ended, triggering breeding");
-        this.triggerBreeding();
-    }
+    updateAndDrawFishes(deltaTime) {
+        // Update dead fish energy/metabolism (if using that feature)
+        this.deadFish.forEach(fish => {
+            fish.update(this.canvas, [], this.fishes, this.params.water_temperature, this.logger);
+        });
 
-    // Food generation
-    this.time_since_last_food += deltaTime * this.speed_multiplier;
-    if (this.time_since_last_food >= this.food_interval) {
-        this.generateFood();
-        this.time_since_last_food = 0;
-    }
-
-    // Clear and redraw the canvas
-    this.clearCanvas();
-    this.drawFood();
-    this.updateAndDrawFishes(deltaTime);
-    this.drawTime();
-    this.drawGenerationTime();
-
-    this.last_animation_time = currentTime;
-
-    // Continue the animation loop
-    requestAnimationFrame((time) => this.animate(time));
-}
-
-updateAndDrawFishes(deltaTime) {
-    // Update dead fish energy/metabolism (if using that feature)
-    this.deadFish.forEach(fish => {
-        fish.update(this.canvas, [], this.fishes, this.params.water_temperature, this.logger);
-    });
-
-    // Update living fish
-    for (let i = 0; i < this.speed_multiplier; i++) {
-        for (let j = this.fishes.length - 1; j >= 0; j--) {
-            const fish = this.fishes[j];
-            fish.update(this.canvas, this.food_items, this.fishes, this.params.water_temperature, this.logger);
-            
-            if (fish.isDead()) {
-                this.deadFish.push(this.fishes.splice(j, 1)[0]);
+        // Update living fish
+        for (let i = 0; i < this.speed_multiplier; i++) {
+            for (let j = this.fishes.length - 1; j >= 0; j--) {
+                const fish = this.fishes[j];
+                fish.update(this.canvas, this.food_items, this.fishes, this.params.water_temperature, this.logger);
+                
+                if (fish.isDead()) {
+                    this.deadFish.push(this.fishes.splice(j, 1)[0]);
+                }
             }
         }
-    }
 
-    // Draw living fish
-    for (const fish of this.fishes) {
-        fish.draw(this.ctx);
+        // Draw living fish
+        for (const fish of this.fishes) {
+            fish.draw(this.ctx);
+        }
     }
-}
 
     resizeCanvas() {
         const container = this.canvas.parentElement;
@@ -589,154 +592,166 @@ updateAndDrawFishes(deltaTime) {
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 
-triggerBreeding() {
-    if (this.is_breeding) return;
-    this.is_breeding = true;
-    
-    const previousSpeed = this.speed_multiplier;
-    this.setSpeed(0);
+    triggerBreeding() {
+        if (this.is_breeding) return;
+        this.is_breeding = true;
+        
+        const previousSpeed = this.speed_multiplier;
+        this.setSpeed(0);
 
-    // Combine living and dead fish for ranking
-    const allFish = [...this.fishes, ...this.deadFish];
-    if (allFish.length === 0) {
-        console.error('Population extinct');
-        this.is_breeding = false;
-        this.setSpeed(previousSpeed);
-        return;
+        // Combine living and dead fish for ranking
+        const allFish = [...this.fishes, ...this.deadFish];
+        if (allFish.length === 0) {
+            console.error('Population extinct');
+            this.is_breeding = false;
+            this.setSpeed(previousSpeed);
+            return;
+        }
+
+        // Sort fish by fitness
+        const sortedFish = allFish.sort((a, b) => b.calculateFitness() - a.calculateFitness());
+        const top50Percent = sortedFish.slice(0, Math.ceil(sortedFish.length / 2));
+
+        // Format data for server
+        const fish_data = top50Percent.map(fish => ({
+            genome: {
+                color: fish.genome.color,
+                speed: fish.genome.speed,
+                size: fish.genome.size,
+                neural_weights: fish.brain.weights,
+                traits: fish.traits
+            }
+        }));
+
+        // Send breeding request
+        fetch('/breed', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ fish_data })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error(`Breeding server error: ${response.status}`);
+            return response.json();
+        })
+        .then(newfish_data => {
+            if (!Array.isArray(newfish_data)) {
+                throw new Error('Invalid breeding data format received');
+            }
+            this.handleBreedingResponse(newfish_data, sortedFish, previousSpeed);
+        })
+        .catch(error => {
+            console.error('Breeding error:', error);
+            this.is_breeding = false;
+            this.setSpeed(previousSpeed);
+        });
     }
 
-    // Sort fish by fitness
-    const sortedFish = allFish.sort((a, b) => b.calculateFitness() - a.calculateFitness());
-    const top50Percent = sortedFish.slice(0, Math.ceil(sortedFish.length / 2));
+    handleBreedingResponse(newfish_data, sortedFish, previousSpeed) {
+        try {
+            this.food_items = [];
+            const newGeneration = [];
 
-    // Format data for server
-    const fish_data = top50Percent.map(fish => ({
-        genome: {
-            color: fish.genome.color,
-            speed: fish.genome.speed,
-            size: fish.genome.size,
-            neural_weights: fish.brain.weights,
-            traits: fish.traits
-        }
-    }));
+            // Add offspring first
+            newfish_data.forEach(fish_data => {
+                if (newGeneration.length < this.params.population_size) {
+                    const fish = new Fish(
+                        Math.random() * this.canvas.width,
+                        Math.random() * this.canvas.height,
+                        fish_data.genome,
+                        this.params.water_temperature,
+                        this.logger
+                    );
+                    newGeneration.push(fish);
+                }
+            });
 
-    // Send breeding request
-    fetch('/breed', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ fish_data })
-    })
-    .then(response => {
-        if (!response.ok) throw new Error(`Breeding server error: ${response.status}`);
-        return response.json();
-    })
-    .then(newfish_data => {
-        if (!Array.isArray(newfish_data)) {
-            throw new Error('Invalid breeding data format received');
-        }
-        this.handleBreedingResponse(newfish_data, sortedFish, previousSpeed);
-    })
-    .catch(error => {
-        console.error('Breeding error:', error);
-        this.is_breeding = false;
-        this.setSpeed(previousSpeed);
-    });
-}
-
-handleBreedingResponse(newfish_data, sortedFish, previousSpeed) {
-    try {
-        this.food_items = [];
-        const newGeneration = [];
-
-        // Add offspring first
-        newfish_data.forEach(fish_data => {
-            if (newGeneration.length < this.params.population_size) {
-                const fish = new Fish(
+            // Fill the remaining slots with parents, then non-parents
+            for (const fish of sortedFish) {
+                if (newGeneration.length >= this.params.population_size) break;
+                const respawnedFish = new Fish(
                     Math.random() * this.canvas.width,
                     Math.random() * this.canvas.height,
-                    fish_data.genome,
+                    fish.genome,
                     this.params.water_temperature,
                     this.logger
                 );
-                newGeneration.push(fish);
+                respawnedFish.energy = 100; // Reset energy
+                newGeneration.push(respawnedFish);
             }
-        });
 
-        // Fill the remaining slots with parents, then non-parents
-        for (const fish of sortedFish) {
-            if (newGeneration.length >= this.params.population_size) break;
-            const respawnedFish = new Fish(
-                Math.random() * this.canvas.width,
-                Math.random() * this.canvas.height,
-                fish.genome,
-                this.params.water_temperature,
-                this.logger
-            );
-            respawnedFish.energy = 100; // Reset energy
-            newGeneration.push(respawnedFish);
+            // Update fish population
+            this.fishes = newGeneration;
+            this.deadFish = []; // Clear dead fish
+            this.generation++;
+            this.stats.setGeneration(this.generation);
+            this.generation_start_time = this.simulation_time;
+
+            if (this.logger) {
+                this.logger.log('breed', `Generation ${this.generation}: ${this.fishes.length} fish`);
+            }
+        } catch (error) {
+            console.error('Error handling breeding response:', error);
+        } finally {
+            this.is_breeding = false;
+            this.setSpeed(previousSpeed);
         }
-
-        // Update fish population
-        this.fishes = newGeneration;
-        this.deadFish = []; // Clear dead fish
-        this.generation++;
-        this.stats.setGeneration(this.generation);
-        this.generation_start_time = this.simulation_time;
-
-        if (this.logger) {
-            this.logger.log('breed', `Generation ${this.generation}: ${this.fishes.length} fish`);
-        }
-    } catch (error) {
-        console.error('Error handling breeding response:', error);
-    } finally {
-        this.is_breeding = false;
-        this.setSpeed(previousSpeed);
     }
-}
 
     updateOverallStats() {
-        if (!this.stats || !this.overall_stats_display) return;
+        if (!this.stats) return;
 
         const currentStats = this.getDetailedStats();
         this.stats.setGeneration(this.generation);
         const generationStats = this.stats.getCurrentStats();
 
+        // Find or create the stats container
+        let statsDisplay = document.getElementById('overall-stats-display');
+        if (!statsDisplay) {
+            console.error('Overall stats display container not found');
+            return;
+        }
+
         const html = `
-            <div class="stats-group">
-                <div class="stat-item">
-                    <label>Population:</label>
-                    <span>${this.fishes.length}/${this.params.population_size}</span>
-                </div>
-                <div class="stat-item">
-                    <label>Generation:</label>
-                    <span>${this.generation}</span>
-                </div>
-                <div class="stat-item">
-                    <label>Time to Next Gen:</label>
-                    <span>${this.formatTime(Math.max(0, this.generation_length - (this.simulation_time - this.generation_start_time)))}</span>
-                </div>
-                <div class="stat-item">
-                    <label>Average Energy:</label>
-                    <span>${currentStats.averageEnergy.toFixed(1)}</span>
-                </div>
-                <div class="stat-item">
-                    <label>Average Size:</label>
-                    <span>${currentStats.averageSize.toFixed(2)}</span>
-                </div>
-                <div class="stat-item">
-                    <label>Average Speed:</label>
-                    <span>${currentStats.averageSpeed.toFixed(2)}</span>
-                </div>
-                <div class="stat-item">
-                    <label>Average Metabolism:</label>
-                    <span>${currentStats.averageMetabolism.toFixed(4)}</span>
-                </div>
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-label">Population</div>
+                <div class="stat-value">${this.fishes.length}/${this.params.population_size}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🧬</div>
+                <div class="stat-label">Generation</div>
+                <div class="stat-value">${this.generation}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⏱️</div>
+                <div class="stat-label">Next Gen</div>
+                <div class="stat-value">${this.formatTime(Math.max(0, this.generation_length - (this.simulation_time - this.generation_start_time)))}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚡</div>
+                <div class="stat-label">Avg Energy</div>
+                <div class="stat-value">${currentStats.averageEnergy.toFixed(1)}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📏</div>
+                <div class="stat-label">Avg Size</div>
+                <div class="stat-value">${currentStats.averageSize.toFixed(2)}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🏃</div>
+                <div class="stat-label">Avg Speed</div>
+                <div class="stat-value">${currentStats.averageSpeed.toFixed(2)}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔄</div>
+                <div class="stat-label">Avg Metabolism</div>
+                <div class="stat-value">${currentStats.averageMetabolism.toFixed(4)}</div>
             </div>
         `;
 
-        this.overall_stats_display.innerHTML = html;
+        statsDisplay.innerHTML = html;
     }
 
     // Add getDetailedStats method
@@ -769,5 +784,4 @@ handleBreedingResponse(newfish_data, sortedFish, previousSpeed) {
             averageMetabolism: totals.metabolism / this.fishes.length
         };
     }
-
 }

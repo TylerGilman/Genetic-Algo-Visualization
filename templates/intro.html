@@ -1,20 +1,32 @@
 {# templates/intro.html #}
 <div class="educational-wrapper">
-    <nav class="custom-navbar">
-        <div class="container">
-            <span class="navbar-brand">🧬 Neural Network Fish Evolution Simulator</span>
-        </div>
-    </nav>
-
     <div class="hero-section">
         <div class="container">
-            <h1 class="display-4">Deep Dive into Fish Evolution</h1>
             <p class="lead">Explore how neural networks and genetic algorithms combine to create intelligent, adaptive fish behaviors.</p>
             <p class="authors">Created by Tyler Gilman & Nia Quinn</p>
         </div>
     </div>
 
     <div class="container content-section">
+        <!-- What is Neurevolution Section -->
+        <div class="section-card mb-5">
+            <h2>What is Neurevolution? 🧬</h2>
+            <div class="row">
+                <div class="col-md-12">
+                    <p class="lead">Neurevolution combines neural networks and evolutionary algorithms to create artificial life forms that can learn and adapt over generations.</p>
+                    <div class="explanation-details">
+                        <h4>Key Components:</h4>
+                        <ul>
+                            <li><strong>Neural Networks:</strong> Act as the "brain" of each fish, processing environmental inputs and controlling behavior</li>
+                            <li><strong>Genetic Algorithms:</strong> Simulate natural selection by breeding successful fish and passing on beneficial traits</li>
+                            <li><strong>Adaptive Learning:</strong> Fish populations evolve better survival strategies over multiple generations</li>
+                            <li><strong>Emergent Behavior:</strong> Complex group behaviors emerge from simple individual rules</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Fish Anatomy Section -->
         <div class="section-card mb-5">
             <h2>Fish Anatomy & Physics 🔬</h2>
@@ -99,6 +111,39 @@
                     </div>
                 </div>
             </div>
+            <div class="tooltip-container">
+                <button class="btn btn-info mt-3" 
+                        data-bs-toggle="tooltip" 
+                        data-bs-placement="bottom"
+                        title="Input neurons act as sensory organs for each fish, detecting food location, other fish positions, predator presence, and internal state. These inputs help the fish make decisions about movement and survival.">
+                    How do input neurons work?
+                </button>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="behavior-card">
+                    <h4>Predator Response</h4>
+                    <p>High cautiousness (>0.6) triggers:</p>
+                    <ul>
+                        <li>Erratic movement patterns</li>
+                        <li>Increased metabolic rate</li>
+                        <li>Schooling behavior</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="behavior-card">
+                    <h4>Energy Conservation</h4>
+                    <p>At low energy (<30%):</p>
+                    <ul>
+                        <li>Reduced activity levels</li>
+                        <li>Passive feeding mode</li>
+                        <li>Prioritized breeding</li>
+                    </ul>
+                </div>
+            </div>
         </div>
 
         <!-- Genetic Traits Section -->
@@ -143,6 +188,50 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Fish Color Genetics Section -->
+        <div class="section-card mb-5">
+            <h2>Fish Color Genetics 🌈</h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="color-visualization">
+                        <div class="color-scale" 
+                             style="background: linear-gradient(to right, 
+                                 hsl(0, 80%, 50%), 
+                                 hsl(60, 80%, 50%),
+                                 hsl(120, 80%, 50%),
+                                 hsl(180, 80%, 50%),
+                                 hsl(240, 80%, 50%),
+                                 hsl(300, 80%, 50%),
+                                 hsl(360, 80%, 50%))">
+                        </div>
+                        <div class="scale-labels">
+                            <span>0.0</span>
+                            <span>0.5</span>
+                            <span>1.0</span>
+                        </div>
+                        <p class="mt-3">Fish colors are determined by their <code>color</code> gene value 
+                        (0-1) mapped to HSL hue values (0°-360°). This creates a continuous color spectrum 
+                        where similar hues indicate genetic similarity between fish.</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="trait-examples">
+                        <div class="color-example" style="background-color: hsl(0, 80%, 50%)">
+                            Red (0.0)
+                        </div>
+                        <div class="color-example" style="background-color: hsl(120, 80%, 50%)">
+                            Green (0.33)
+                        </div>
+                        <div class="color-example" style="background-color: hsl(240, 80%, 50%)">
+                            Blue (0.66)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
             </div>
         </div>
 
@@ -204,141 +293,145 @@
 </div>
 
 <style>
-.educational-wrapper {
-    font-family: 'Nunito', sans-serif;
-    background-color: #f0f7ff;
-    padding-bottom: 3rem;
-}
+    .educational-wrapper {
+        font-family: 'Nunito', sans-serif;
+        background-color: #f0f7ff;
+        padding-bottom: 3rem;
+    }
 
-.custom-navbar {
-    background: #1a237e;
-    padding: 1rem 0;
-    color: white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+    .custom-navbar {
+        background: #1a237e;
+        padding: 1rem 0;
+        color: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
 
-.hero-section {
-    background: linear-gradient(135deg, #1a237e, #3949ab);
-    color: white;
-    padding: 4rem 0;
-    text-align: center;
-    margin-bottom: 3rem;
-}
-
-.section-card {
-    background: white;
-    border-radius: 15px;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 4px 15px rgba(26, 35, 126, 0.1);
-}
-
-.section-card h2 {
-    color: #1a237e;
-    margin-bottom: 1.5rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid #e8eaf6;
-}
-
-.network-layer, .traits-card {
-    background: #e8eaf6;
-    padding: 1.5rem;
-    border-radius: 10px;
-    height: 100%;
-}
-
-.neuron-list {
-    margin-top: 1rem;
-}
-
-.neuron-item {
-    display: flex;
-    align-items: center;
-    margin-bottom: 0.5rem;
-    padding: 0.5rem;
-    background: rgba(255, 255, 255, 0.5);
-    border-radius: 8px;
-}
-
-.neuron-icon {
-    margin-right: 0.5rem;
-    font-size: 1.2rem;
-}
-
-.trait-item {
-    background: white;
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-}
-
-.trait-name {
-    font-weight: 700;
-    color: #1a237e;
-    display: block;
-    margin-bottom: 0.5rem;
-}
-
-.trait-desc {
-    font-size: 0.9rem;
-    color: #555;
-}
-
-.anatomy-details, .physics-details, .breeding-details, .mutation-details {
-    background: #e8eaf6;
-    padding: 1.5rem;
-    border-radius: 10px;
-    height: 100%;
-}
-
-ul {
-    list-style-type: none;
-    padding-left: 0;
-}
-
-ul li {
-    margin-bottom: 0.8rem;
-    padding-left: 1.5rem;
-    position: relative;
-}
-
-ul li:before {
-    content: '•';
-    color: #1a237e;
-    font-weight: bold;
-    position: absolute;
-    left: 0;
-}
-
-.network-structure {
-    background: #f5f5f5;
-    padding: 1.5rem;
-    border-radius: 10px;
-}
-
-.metabolism-details {
-    background: #e8eaf6;
-    padding: 1.5rem;
-    border-radius: 10px;
-}
-
-.temp-chart {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 10px;
-}
-
-@media (max-width: 768px) {
     .hero-section {
-        padding: 2rem 0;
+        background: linear-gradient(135deg, #1a237e, #3949ab);
+        color: white;
+        padding: 4rem 0;
+        text-align: center;
+        margin-bottom: 3rem;
     }
-    
+
     .section-card {
-        padding: 1.5rem;
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(26, 35, 126, 0.1);
     }
-    
+
+    .section-card h2 {
+        color: #1a237e;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e8eaf6;
+    }
+
     .network-layer, .traits-card {
+        background: #e8eaf6;
+        padding: 1.5rem;
+        border-radius: 10px;
+        height: 100%;
+    }
+
+    .neuron-list {
+        margin-top: 1rem;
+    }
+
+    .neuron-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        padding: 0.5rem;
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 8px;
+    }
+
+    .neuron-icon {
+        margin-right: 0.5rem;
+        font-size: 1.2rem;
+    }
+
+    .trait-item {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
         margin-bottom: 1rem;
     }
-}
+
+    .trait-name {
+        font-weight: 700;
+        color: #1a237e;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .trait-desc {
+        font-size: 0.9rem;
+        color: #555;
+    }
+
+    .anatomy-details, .physics-details, .breeding-details, .mutation-details {
+        background: #e8eaf6;
+        padding: 1.5rem;
+        border-radius: 10px;
+        height: 100%;
+    }
+
+    ul {
+        list-style-type: none;
+        padding-left: 0;
+    }
+
+    ul li {
+        margin-bottom: 0.8rem;
+        padding-left: 1.5rem;
+        position: relative;
+    }
+
+    ul li:before {
+        content: '•';
+        color: #1a237e;
+        font-weight: bold;
+        position: absolute;
+        left: 0;
+    }
+
+    .network-structure {
+        background: #f5f5f5;
+        padding: 1.5rem;
+        border-radius: 10px;
+    }
+
+    .metabolism-details {
+        background: #e8eaf6;
+        padding: 1.5rem;
+        border-radius: 10px;
+    }
+
+    .temp-chart {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+    }
+
+    .tooltip-container {
+        text-align: center;
+    }
+
+    @media (max-width: 768px) {
+        .hero-section {
+            padding: 2rem 0;
+        }
+        
+        .section-card {
+            padding: 1.5rem;
+        }
+        
+        .network-layer, .traits-card {
+            margin-bottom: 1rem;
+        }
+    }
 </style>
