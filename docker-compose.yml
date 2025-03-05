@@ -14,11 +14,9 @@ services:
       - "traefik.http.routers.fish.entrypoints=websecure"
       - "traefik.http.routers.fish.tls.certresolver=leresolver"
       - "traefik.http.services.fish.loadbalancer.server.port=8000"
-      - "traefik.http.middlewares.securityheaders.headers.sslredirect=true"
-      - "traefik.http.middlewares.securityheaders.headers.stsseconds=31536000"
-      - "traefik.http.routers.fish.middlewares=securityheaders"
+      - "traefik.http.routers.fish.middlewares=security-headers@file"
     environment:
-      - LISTEN_ADDR=0.0.0.0:8000
+      - LISTEN addr=0.0.0.0:8000
       - VIRTUAL_PROTO=https
     restart: unless-stopped
     volumes:
